@@ -73,7 +73,7 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
 
   override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
     toolWindow.title = "FirViewer"
-    toolWindow.setIcon(AllIcons.FileTypes.Any_type)
+    toolWindow.setIcon(AllIcons.Toolwindows.ToolWindowHierarchy)
     toolWindow.setTitleActions(listOf(object : AnAction() {
       override fun update(e: AnActionEvent) {
         e.presentation.icon = AllIcons.Actions.Refresh
