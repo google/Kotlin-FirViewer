@@ -1,0 +1,18 @@
+<idea-plugin>
+    <id>org.example.FirViewer</id>
+    <name>FirViewer</name>
+    <vendor email="tgeng@google.com" url="http://www.google.com">Google LLC</vendor>
+
+    <description>Viewer of FIR structure of Kotlin code. To use this plugin, you must use the
+    FIR-based Kotlin plugin, which is only available from the Kotlin dev repo for now.</description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>org.jetbrains.kotlin</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="FirViewer" anchor="right" factoryClass="com.android.tools.FirViewerToolWindowFactory"/>
+    </extensions>
+
+    <actions>
+    </actions>
+</idea-plugin>
