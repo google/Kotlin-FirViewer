@@ -50,6 +50,7 @@ import org.jetbrains.kotlin.fir.utils.TypeRegistry
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
 import org.jetbrains.kotlin.idea.fir.low.level.api.api.getFirFile
 import org.jetbrains.kotlin.idea.fir.low.level.api.api.getResolveState
+import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtFile
 import java.awt.*
 import java.awt.event.MouseEvent
@@ -256,15 +257,23 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
         is FirLoop -> type(node) + render(node)
         is FirPropertyAccessor -> type(node) + render(node)
         is FirReference -> type(node) + render(node)
-        is FirRegularClass -> type(node) + label(e.name.asString()).apply { icon = AllIcons.Nodes.Class }
-        is FirSimpleFunction -> type(node) + label(e.name.asString()).apply { icon = AllIcons.Nodes.Function }
+        is FirRegularClass -> type(node) + label(e.name.asString()).apply {
+          icon = AllIcons.Nodes.Class
+        }
+        is FirSimpleFunction -> type(node) + label(e.name.asString()).apply {
+          icon = AllIcons.Nodes.Function
+        }
         is FirStubStatement -> type(node) + render(node)
         is FirTypeAlias -> type(node) + render(node)
         is FirTypeParameter -> type(node) + render(node)
         is FirTypeProjection -> type(node) + render(node)
         is FirTypeRef -> type(node) + render(node)
-        is FirProperty -> type(node) + label(e.name.asString()).apply { icon = AllIcons.Nodes.Property }
-        is FirVariable<*> -> type(node) + label(e.name.asString()).apply { icon = AllIcons.Nodes.Variable }
+        is FirProperty -> type(node) + label(e.name.asString()).apply {
+          icon = AllIcons.Nodes.Property
+        }
+        is FirVariable<*> -> type(node) + label(e.name.asString()).apply {
+          icon = AllIcons.Nodes.Variable
+        }
         is FirVariableAssignment -> type(node) + render(node)
         is FirWhenBranch -> type(node) + render(node)
         // is FirConstructedClassTypeParameterRef,
@@ -443,7 +452,9 @@ private class ObjectTableModel(private val obj: Any) : AbstractTableModel() {
     return when {
       this is Iterable<*> || this is Map<*, *> || this is AttributeArrayOwner<*, *> ||
         this is Enum<*> || this::class.objectInstance != null ||
-        this::class.java.isPrimitive || Primitives.isWrapperType(this::class.java) || this::class.isData -> this::class.simpleName
+        this::class.java.isPrimitive || Primitives.isWrapperType(this::class.java) ||
+        this::class.java == String::class.java || this::class.java == Name::class.java ||
+        this::class.isData -> this::class.simpleName
         ?: this::class.toString()
       else -> this::class.simpleName + " @" + Integer.toHexString(System.identityHashCode(this))
     }
@@ -506,7 +517,9 @@ private fun label(
   bold: Boolean = false,
   italic: Boolean = false,
   multiline: Boolean = false
-) = JBLabel(if (multiline) ("<html>" + s.replace("\n", "<br/>") + "</html>") else s).apply {
+) = JBLabel(
+  if (multiline) ("<html>" + s.replace("\n", "<br/>").replace(" ", "&nbsp;") + "</html>") else s
+).apply {
   font =
     font.deriveFont((if (bold) Font.BOLD else Font.PLAIN) + if (italic) Font.ITALIC else Font.PLAIN)
 }
