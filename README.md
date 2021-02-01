@@ -1,15 +1,19 @@
 # Kotlin FIR Viewer
 
-Small tool to view inspect Kotlin FIR structure.
+A small tool to inspect Kotlin FIR structure.
+
+![image](https://user-images.githubusercontent.com/29584386/106402741-d2c64c80-63df-11eb-9b7d-5f89dbe967e8.png)
 
 ## How to use?
 
-This plugin only works with Kotlin plugin in FIR mode. To use it, follow the instructions below.
+This plugin **only** works with Kotlin plugin in FIR mode. To use it, follow the instructions below.
 
 1. go to the [release](https://github.com/tgeng/FirViewer/releases) page and download the most recent release.
 2. Open IntelliJ (probably your dev build that has the Kotlin FIR plugin with `idea.fir.plugin=true`)
-3. Open plugins setting. Click the gear icon on top, select "Install plugin from disk...", and pick the downloaded zip file.
-4. Click OK and you are good to go.
+3. Open plugins setting. Click the gear icon on top, select "Install plugin from disk...", and pick the downloaded zip file and click OK.
+4. The viewer can now be found under `View -> Tool Windows -> FirViewer`
+
+Note: You may need to refresh the view a couple of times in order to get the final updated FIR structures.
 
 ## Build Instruction
 
