@@ -164,14 +164,13 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
         override fun mousePressed(e: MouseEvent?) {}
 
         override fun mouseReleased(e: MouseEvent?) {
+          state.expandedTreePaths.clear()
           state.expandedTreePaths += collectExpandedPaths(tree).map { path -> path.getNamePath() }
         }
 
         override fun mouseEntered(e: MouseEvent?) {}
 
-        override fun mouseExited(e: MouseEvent?) {
-          state.expandedTreePaths += collectExpandedPaths(tree).map { path -> path.getNamePath() }
-        }
+        override fun mouseExited(e: MouseEvent?) {}
 
       })
       state
