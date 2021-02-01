@@ -134,7 +134,8 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
       )
 
       tree.addTreeSelectionListener { e ->
-        if (e.newLeadSelectionPath != null) state.selectedTreePath = e.newLeadSelectionPath.getNamePath()
+        if (e.newLeadSelectionPath != null) state.selectedTreePath =
+          e.newLeadSelectionPath.getNamePath()
         ApplicationManager.getApplication().runWriteAction {
           val editorManager = FileEditorManager.getInstance(project) ?: return@runWriteAction
           val editor: Editor = editorManager.selectedTextEditor ?: return@runWriteAction
@@ -145,7 +146,8 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
           tablePane.add(TableWrapper(ObjectTable(node.firElement, 0, state)))
           tablePane.repaint()
           val source = node.firElement.source ?: return@runWriteAction
-          val textAttributes = TextAttributes(null, null, Color.GRAY, EffectType.LINE_UNDERSCORE, Font.PLAIN)
+          val textAttributes =
+            TextAttributes(null, null, Color.GRAY, EffectType.LINE_UNDERSCORE, Font.PLAIN)
           editor.markupModel
             .addRangeHighlighter(
               source.startOffset,
@@ -178,7 +180,13 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
 
     if (toolWindow.contentManager.contents.firstOrNull() != treeUiState.pane) {
       toolWindow.contentManager.removeAllContents(true)
-      toolWindow.contentManager.addContent(toolWindow.contentManager.factory.createContent(treeUiState.pane, "Current File", true))
+      toolWindow.contentManager.addContent(
+        toolWindow.contentManager.factory.createContent(
+          treeUiState.pane,
+          "Current File",
+          true
+        )
+      )
     }
   }
 
@@ -236,7 +244,7 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
         is FirAssignmentOperatorStatement -> type(node) + render(node)
         is FirAugmentedArraySetCall -> type(node) + render(node)
         is FirCatch -> type(node) + render(node)
-        is FirConstructor -> type(node) + render(node)
+        is FirConstructor -> type(node) + label("<init>").apply { icon = AllIcons.Nodes.Function }
         is FirContractDescription -> type(node) + render(node)
         is FirDeclarationStatusImpl -> type(node) + render(node)
         is FirDelegatedConstructorCall -> type(node) + render(node)
@@ -249,14 +257,15 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
         is FirLoop -> type(node) + render(node)
         is FirPropertyAccessor -> type(node) + render(node)
         is FirReference -> type(node) + render(node)
-        is FirRegularClass -> type(node) + label(e.name.asString())
-        is FirSimpleFunction -> type(node) + label(e.name.asString())
+        is FirRegularClass -> type(node) + label(e.name.asString()).apply { icon = AllIcons.Nodes.Class }
+        is FirSimpleFunction -> type(node) + label(e.name.asString()).apply { icon = AllIcons.Nodes.Function }
         is FirStubStatement -> type(node) + render(node)
         is FirTypeAlias -> type(node) + render(node)
         is FirTypeParameter -> type(node) + render(node)
         is FirTypeProjection -> type(node) + render(node)
         is FirTypeRef -> type(node) + render(node)
-        is FirVariable<*> -> type(node) + label(e.name.asString())
+        is FirProperty -> type(node) + label(e.name.asString()).apply { icon = AllIcons.Nodes.Property }
+        is FirVariable<*> -> type(node) + label(e.name.asString()).apply { icon = AllIcons.Nodes.Variable }
         is FirVariableAssignment -> type(node) + render(node)
         is FirWhenBranch -> type(node) + render(node)
         // is FirConstructedClassTypeParameterRef,
@@ -314,7 +323,8 @@ class FirTreeModel(private val ktFile: KtFile) : BaseTreeModel<FirTreeNode>() {
       override fun visitElement(element: FirElement) {
         newChildren.add(
           FirTreeNode(
-            childFirElements[element] ?: throw IllegalStateException("element $element does not correspond to any members!"),
+            childFirElements[element]
+              ?: throw IllegalStateException("element $element does not correspond to any members!"),
             element as? FirPureAbstractElement
               ?: throw java.lang.IllegalArgumentException("unknown type of FIR element $element")
           )
@@ -337,10 +347,12 @@ private class TableWrapper(private val table: JBTable) : JPanel() {
     add(table)
   }
 
-  override fun getPreferredSize(): Dimension = Dimension(1, table.preferredSize.height + table.tableHeader.preferredSize.height)
+  override fun getPreferredSize(): Dimension =
+    Dimension(1, table.preferredSize.height + table.tableHeader.preferredSize.height)
 }
 
-private class ObjectTable(obj: Any, private val index: Int, private val state: TreeUiState) : FittingTable(ObjectTableModel(obj)) {
+private class ObjectTable(obj: Any, private val index: Int, private val state: TreeUiState) :
+  FittingTable(ObjectTableModel(obj)) {
   init {
     val tablePane = state.tablePane
     rowSelectionAllowed = true
@@ -375,7 +387,8 @@ private open class FittingTable(model: TableModel) : JBTable(model) {
     val component = super.prepareRenderer(renderer, row, column)
     val rendererWidth = component.preferredSize.width
     val tableColumn = getColumnModel().getColumn(column)
-    tableColumn.preferredWidth = Math.max(rendererWidth + intercellSpacing.width, tableColumn.preferredWidth)
+    tableColumn.preferredWidth =
+      Math.max(rendererWidth + intercellSpacing.width, tableColumn.preferredWidth)
     if (column == 2) {
       // set row height according to the last column
       val rendererHeight = component.preferredSize.height
@@ -397,9 +410,11 @@ private class ObjectTableModel(private val obj: Any) : AbstractTableModel() {
     is Map<*, *> -> obj.map { (k, v) -> RowData(k.toString(), v?.getTypeAndId(), v) }
     is AttributeArrayOwner<*, *> -> {
       val arrayMap =
-        obj::class.memberProperties.first { it.name == "arrayMap" }.apply { isAccessible = true }.call(obj) as ArrayMap<*>
+        obj::class.memberProperties.first { it.name == "arrayMap" }.apply { isAccessible = true }
+          .call(obj) as ArrayMap<*>
       val typeRegistry =
-        obj::class.memberProperties.first { it.name == "typeRegistry" }.apply { isAccessible = true }
+        obj::class.memberProperties.first { it.name == "typeRegistry" }
+          .apply { isAccessible = true }
           .call(obj) as TypeRegistry<*, *>
       val idPerType =
         TypeRegistry::class.members.first { it.name == "idPerType" }.apply { isAccessible = true }
@@ -471,10 +486,11 @@ object ObjectRenderer : TableCellRenderer {
   ): Component = when (value) {
     is Collection<*> -> label("size = " + value.size)
     is Map<*, *> -> label("size =" + value.size)
-    is FirElement -> label(value.render())
+    is FirElement -> label(value.render(), multiline = true)
     is AttributeArrayOwner<*, *> -> {
       val arrayMap =
-        value::class.memberProperties.first { it.name == "arrayMap" }.apply { isAccessible = true }.call(value) as ArrayMap<*>
+        value::class.memberProperties.first { it.name == "arrayMap" }.apply { isAccessible = true }
+          .call(value) as ArrayMap<*>
       label("${arrayMap.size} attributes")
     }
     else -> label(value.toString())
@@ -486,10 +502,15 @@ object ObjectRenderer : TableCellRenderer {
   }
 }
 
-private fun label(s: String, bold: Boolean = false, italic: Boolean = false) =
-  JBLabel("<html>" + s.replace("\n", "<br/>") + "</html>").apply {
-    font = font.deriveFont((if (bold) Font.BOLD else Font.PLAIN) + if (italic) Font.ITALIC else Font.PLAIN)
-  }
+private fun label(
+  s: String,
+  bold: Boolean = false,
+  italic: Boolean = false,
+  multiline: Boolean = false
+) = JBLabel(if (multiline) ("<html>" + s.replace("\n", "<br/>") + "</html>") else s).apply {
+  font =
+    font.deriveFont((if (bold) Font.BOLD else Font.PLAIN) + if (italic) Font.ITALIC else Font.PLAIN)
+}
 
 private fun render(e: FirTreeNode) = JBLabel(e.firElement.render())
 private fun type(e: FirTreeNode): JComponent {
@@ -500,11 +521,13 @@ private fun type(e: FirTreeNode): JComponent {
       e.name + ": "
     } + e.firElement::class.simpleName,
     bold = true
-  ) + label("@" + Integer.toHexString(System.identityHashCode(e.firElement)))
+  )
+  val address = label("@" + Integer.toHexString(System.identityHashCode(e.firElement)))
+  val nameTypeAndAddress = nameAndType + address
   return if (e.firElement is FirDeclaration) {
-    nameAndType + label(e.firElement.resolvePhase.toString(), italic = true)
+    nameTypeAndAddress + label(e.firElement.resolvePhase.toString(), italic = true)
   } else {
-    nameAndType
+    nameTypeAndAddress
   }
 }
 
@@ -524,7 +547,12 @@ private operator fun JComponent.plus(that: JComponent): JPanel {
   }
 }
 
-class TreeUiState(val pane: JComponent, val tree: Tree, val model: FirTreeModel, val tablePane: JPanel) {
+class TreeUiState(
+  val pane: JComponent,
+  val tree: Tree,
+  val model: FirTreeModel,
+  val tablePane: JPanel
+) {
   val expandedTreePaths = mutableSetOf<List<String>>()
   var selectedTreePath: List<String>? = null
   val selectedTablePath: MutableList<String> = mutableListOf()
