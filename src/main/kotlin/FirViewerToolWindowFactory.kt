@@ -45,7 +45,9 @@ import org.jetbrains.kotlin.fir.expressions.*
 import org.jetbrains.kotlin.fir.expressions.impl.FirStubStatement
 import org.jetbrains.kotlin.fir.references.FirReference
 import org.jetbrains.kotlin.fir.render
+import org.jetbrains.kotlin.fir.resolve.dfa.cfg.CFGNode
 import org.jetbrains.kotlin.fir.resolve.dfa.cfg.ControlFlowGraph
+import org.jetbrains.kotlin.fir.resolve.dfa.cfg.Edge
 import org.jetbrains.kotlin.fir.types.FirTypeProjection
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.utils.ArrayMap
@@ -60,6 +62,7 @@ import java.awt.*
 import java.awt.event.MouseEvent
 import java.awt.event.MouseListener
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import javax.swing.*
 import javax.swing.table.AbstractTableModel
 import javax.swing.table.TableCellRenderer
@@ -373,7 +376,7 @@ sealed class ObjectViewer(val state: TreeUiState, val index: Int) {
 
   companion object {
     fun createObjectViewer(obj: Any, state: TreeUiState, index: Int): ObjectViewer = when (obj) {
-      /* is ControlFlowGraph -> CfgGraphViewer(state, index, obj) */
+      is ControlFlowGraph -> CfgGraphViewer(state, index, obj)
       else -> TableObjectViewer(state, index, obj)
     }
   }
@@ -382,16 +385,36 @@ sealed class ObjectViewer(val state: TreeUiState, val index: Int) {
 private class CfgGraphViewer(state: TreeUiState, index: Int, graph: ControlFlowGraph) :
   ObjectViewer(state, index) {
 
-  private val g = SingleGraph("foo").apply {
-    setAutoCreate(true)
-    addEdge("ab1", "A", "B")
-    addEdge("ab2", "A", "B")
-    addEdge("ac", "A", "C")
-    addEdge("ca", "C", "A")
+  private val nodeNameMap = mutableMapOf<CFGNode<*>, String>()
+  private val nodeClassCounter = mutableMapOf<String, AtomicInteger>()
+  val CFGNode<*>.name:String get() = nodeNameMap.computeIfAbsent(this) { node ->
+    val nodeClassName = (node::class.simpleName?:node::class.toString()).removeSuffix("Node")
+    nodeClassName + nodeClassCounter.computeIfAbsent(nodeClassName) { AtomicInteger() }.getAndIncrement()
   }
+
+  private val graph = SingleGraph("foo").apply {
+    graph.nodes.forEach { node ->
+      addNode(node.name)
+    }
+    val edgeCounter = AtomicInteger()
+    val edgeNameMap = mutableMapOf<String, EdgeData>()
+    graph.nodes.forEach { node ->
+      node.followingNodes.forEach { to ->
+        val edgeId = edgeCounter.getAndIncrement().toString()
+        addEdge(edgeId, node.name, to.name)
+      }
+//      node.incomingEdges.forEach { from ->
+//        val edgeId = edgeCounter.getAndIncrement().toString()
+//        addEdge(edgeId, from.name, node.name)
+//      }
+    }
+  }
+
+  data class EdgeData(val from:CFGNode<*>, val to: CFGNode<*>, val edge: Edge?)
+
   override val view: JComponent =
     SwingViewer(
-      g,
+      this.graph,
       Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD
     ).addDefaultView(false) as JComponent
 
@@ -466,7 +489,7 @@ private class ObjectTableModel(private val obj: Any) : AbstractTableModel() {
     is Iterable<*> -> obj.mapIndexed { index, value ->
       RowData(index.toString(), value?.getTypeAndId(), value)
     }
-    is Map<*, *> -> obj.map { (k, v) -> RowData(k.toString(), v?.getTypeAndId(), v) }
+    is Map<*, *> -> obj.map { (k, v) -> RowData(k?.getValueAndId() ?: "", v?.getTypeAndId(), v) }
     is AttributeArrayOwner<*, *> -> {
       val arrayMap =
         obj::class.memberProperties.first { it.name == "arrayMap" }.apply { isAccessible = true }
@@ -501,15 +524,26 @@ private class ObjectTableModel(private val obj: Any) : AbstractTableModel() {
 
   private fun Any.getTypeAndId(): String {
     return when {
-      this is Iterable<*> || this is Map<*, *> || this is AttributeArrayOwner<*, *> ||
-        this is Enum<*> || this::class.objectInstance != null ||
-        this::class.java.isPrimitive || Primitives.isWrapperType(this::class.java) ||
-        this::class.java == String::class.java || this::class.java == Name::class.java ||
-        this::class.isData -> this::class.simpleName
+      isData() -> this::class.simpleName
         ?: this::class.toString()
       else -> this::class.simpleName + " @" + Integer.toHexString(System.identityHashCode(this))
     }
   }
+
+  private fun Any.getValueAndId(): String {
+    return when {
+      isData() -> this::class.simpleName
+        ?: this.toString()
+      else -> this::class.simpleName + " @" + Integer.toHexString(System.identityHashCode(this))
+    }
+  }
+
+  private fun Any.isData() =
+    this is Iterable<*> || this is Map<*, *> || this is AttributeArrayOwner<*, *> ||
+      this is Enum<*> || this::class.objectInstance != null ||
+      this::class.java.isPrimitive || Primitives.isWrapperType(this::class.java) ||
+      this::class.java == String::class.java || this::class.java == Name::class.java ||
+      this::class.isData
 
   override fun getColumnName(column: Int): String = when (column) {
     0 -> when (obj) {
