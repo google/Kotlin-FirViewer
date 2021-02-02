@@ -82,7 +82,7 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
     System.setProperty("org.graphstream.ui", "swing")
     toolWindow.title = "FirViewer"
     toolWindow.setIcon(AllIcons.Toolwindows.ToolWindowHierarchy)
-    toolWindow.setTitleActions(listOf(object : AnAction() {
+    toolWindow.setTitleActions(listOf(object : AnAction(), DumbAware {
       override fun update(e: AnActionEvent) {
         e.presentation.icon = AllIcons.Actions.Refresh
       }
@@ -376,7 +376,7 @@ sealed class ObjectViewer(val state: TreeUiState, val index: Int) {
 
   companion object {
     fun createObjectViewer(obj: Any, state: TreeUiState, index: Int): ObjectViewer = when (obj) {
-      is ControlFlowGraph -> CfgGraphViewer(state, index, obj)
+//      is ControlFlowGraph -> CfgGraphViewer(state, index, obj)
       else -> TableObjectViewer(state, index, obj)
     }
   }
@@ -412,11 +412,10 @@ private class CfgGraphViewer(state: TreeUiState, index: Int, graph: ControlFlowG
 
   data class EdgeData(val from:CFGNode<*>, val to: CFGNode<*>, val edge: Edge?)
 
-  override val view: JComponent =
-    SwingViewer(
-      this.graph,
-      Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD
-    ).addDefaultView(false) as JComponent
+  val viewer = SwingViewer(this.graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD).apply {
+    enableAutoLayout()
+  }
+  override val view: JComponent = viewer.addDefaultView(false) as JComponent
 
   override fun selectAndGetObject(name: String): Any? {
     return null
