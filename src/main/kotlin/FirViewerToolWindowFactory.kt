@@ -31,6 +31,9 @@ import com.intellij.ui.table.JBTable
 import com.intellij.ui.tree.BaseTreeModel
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.tree.TreeUtil.collectExpandedPaths
+import org.graphstream.graph.implementations.SingleGraph
+import org.graphstream.ui.swing_viewer.SwingViewer
+import org.graphstream.ui.view.Viewer
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirLabel
 import org.jetbrains.kotlin.fir.FirPureAbstractElement
@@ -42,6 +45,7 @@ import org.jetbrains.kotlin.fir.expressions.*
 import org.jetbrains.kotlin.fir.expressions.impl.FirStubStatement
 import org.jetbrains.kotlin.fir.references.FirReference
 import org.jetbrains.kotlin.fir.render
+import org.jetbrains.kotlin.fir.resolve.dfa.cfg.ControlFlowGraph
 import org.jetbrains.kotlin.fir.types.FirTypeProjection
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.utils.ArrayMap
@@ -67,12 +71,12 @@ import kotlin.reflect.KVisibility
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.isAccessible
 
-
 class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
 
   private val cache = CacheBuilder.newBuilder().weakKeys().build<PsiFile, TreeUiState>()
 
   override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
+    System.setProperty("org.graphstream.ui", "swing")
     toolWindow.title = "FirViewer"
     toolWindow.setIcon(AllIcons.Toolwindows.ToolWindowHierarchy)
     toolWindow.setTitleActions(listOf(object : AnAction() {
@@ -144,7 +148,7 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
           val node = tree.lastSelectedPathComponent as? FirTreeNode ?: return@runWriteAction
           tablePane.removeAll()
           state.selectedTablePath.clear()
-          tablePane.add(TableWrapper(ObjectTable(node.firElement, 0, state)))
+          tablePane.add(ObjectViewer.createObjectViewer(node.firElement, state, 0).view)
           tablePane.repaint()
           val source = node.firElement.source ?: return@runWriteAction
           val textAttributes =
@@ -197,12 +201,8 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
     treeUiState.expandedTreePaths.forEach { tree.expandPath(it.adaptPath(treeUiState.model)) }
     tree.selectionPath = treeUiState.selectedTreePath?.adaptPath(treeUiState.model)
     for (name in selectedTablePath) {
-      val tableWrapper = treeUiState.tablePane.components.last() as? TableWrapper ?: break
-      val table = tableWrapper.getComponent(1) as ObjectTable
-      val model = table.model as ObjectTableModel
-      val index = model.members.indexOfFirst { it.name == name }
-      if (index == -1) break
-      table.setRowSelectionInterval(index, index)
+      val objectViewer = treeUiState.tablePane.components.last() as? ObjectViewer ?: break
+      if (!objectViewer.select(name)) break
     }
     treeUiState.tablePane.repaint()
   }
@@ -348,40 +348,91 @@ data class FirTreeNode(val name: String = "", val firElement: FirPureAbstractEle
   var currentChildren = mutableListOf<FirTreeNode>()
 }
 
-private class TableWrapper(private val table: JBTable) : JPanel() {
-  init {
-    layout = BoxLayout(this, BoxLayout.Y_AXIS)
-    add(table.tableHeader)
-    add(table)
+sealed class ObjectViewer(val state: TreeUiState, val index: Int) {
+  fun select(name: String): Boolean {
+    val nextObject = selectAndGetObject(name) ?: return false
+    val nextViewer = createObjectViewer(nextObject, state, index + 1)
+
+    val tablePane = state.tablePane
+    // Remove all tables below this one
+    while (tablePane.components.size > index + 1) {
+      tablePane.remove(tablePane.components.size - 1)
+    }
+    while (state.selectedTablePath.size > index) {
+      state.selectedTablePath.removeLast()
+    }
+    tablePane.add(nextViewer.view)
+    state.selectedTablePath.add(name)
+    tablePane.repaint()
+    return true
   }
 
-  override fun getPreferredSize(): Dimension =
-    Dimension(1, table.preferredSize.height + table.tableHeader.preferredSize.height)
+  abstract val view: JComponent
+
+  protected abstract fun selectAndGetObject(name: String): Any?
+
+  companion object {
+    fun createObjectViewer(obj: Any, state: TreeUiState, index: Int): ObjectViewer = when (obj) {
+      /* is ControlFlowGraph -> CfgGraphViewer(state, index, obj) */
+      else -> TableObjectViewer(state, index, obj)
+    }
+  }
 }
 
-private class ObjectTable(obj: Any, private val index: Int, private val state: TreeUiState) :
-  FittingTable(ObjectTableModel(obj)) {
-  init {
-    val tablePane = state.tablePane
+private class CfgGraphViewer(state: TreeUiState, index: Int, graph: ControlFlowGraph) :
+  ObjectViewer(state, index) {
+
+  private val g = SingleGraph("foo").apply {
+    setAutoCreate(true)
+    addEdge("ab1", "A", "B")
+    addEdge("ab2", "A", "B")
+    addEdge("ac", "A", "C")
+    addEdge("ca", "C", "A")
+  }
+  override val view: JComponent =
+    SwingViewer(
+      g,
+      Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD
+    ).addDefaultView(false) as JComponent
+
+  override fun selectAndGetObject(name: String): Any? {
+    return null
+  }
+}
+
+private class TableObjectViewer(state: TreeUiState, index: Int, obj: Any) :
+  ObjectViewer(state, index) {
+  private val _model = ObjectTableModel(obj)
+  private val table = FittingTable(_model).apply {
     rowSelectionAllowed = true
     setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
     selectionModel.addListSelectionListener { e ->
       if (e.valueIsAdjusting) return@addListSelectionListener
       val row = selectedRow
-      // Remove all tables below this one
-      while (tablePane.components.size > index + 1) {
-        tablePane.remove(tablePane.components.size - 1)
-      }
-      while (state.selectedTablePath.size > index) {
-        state.selectedTablePath.removeLast()
-      }
-      val (name, _, value) = (model as ObjectTableModel).members[row]
-      value?.let {
-        tablePane.add(TableWrapper(ObjectTable(it, index + 1, state)))
-        state.selectedTablePath.add(name)
-      }
-      tablePane.repaint()
+      val name = _model.members[row].name
+      select(name)
     }
+  }
+
+  override val view = TableWrapper()
+
+  override fun selectAndGetObject(name: String): Any? {
+    val index = _model.members.indexOfFirst { it.name == name }
+    if (index == -1) return null
+    table.setRowSelectionInterval(index, index)
+    return _model.members[index].value
+  }
+
+  private inner class TableWrapper :
+    JPanel() {
+    init {
+      layout = BoxLayout(this, BoxLayout.Y_AXIS)
+      add(table.tableHeader)
+      add(table)
+    }
+
+    override fun getPreferredSize(): Dimension =
+      Dimension(1, table.preferredSize.height + table.tableHeader.preferredSize.height)
   }
 }
 
