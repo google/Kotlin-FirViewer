@@ -11,6 +11,8 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow id="FirViewer" anchor="right" factoryClass="io.github.tgeng.firviewer.FirViewerToolWindowFactory"/>
+        <toolWindow id="KtSymbolViewer" anchor="right"
+            factoryClass="io.github.tgeng.firviewer.KtSymbolViewerToolWindowFactory"/>
     </extensions>
 
     <actions>
