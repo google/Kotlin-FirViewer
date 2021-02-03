@@ -9,12 +9,16 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
-import com.intellij.openapi.fileEditor.*
+import com.intellij.openapi.fileEditor.FileDocumentManagerListener
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.FileEditorManagerEvent
+import com.intellij.openapi.fileEditor.FileEditorManagerListener
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import org.jetbrains.kotlin.fir.FirElement
@@ -22,16 +26,19 @@ import org.jetbrains.kotlin.fir.FirPureAbstractElement
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
 import org.jetbrains.kotlin.idea.fir.low.level.api.api.getFirFile
 import org.jetbrains.kotlin.idea.fir.low.level.api.api.getResolveState
+import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtVisitorVoid
 
-class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
+class KtViewerToolWindowFactory : ToolWindowFactory {
 
     private val cache = CacheBuilder.newBuilder().weakKeys().build<PsiFile, TreeUiState>()
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-//    System.setProperty("org.graphstream.ui", "swing")
-        toolWindow.title = "FirViewer"
-        toolWindow.setIcon(AllIcons.Toolwindows.ToolWindowHierarchy)
+        toolWindow.title = "KtViewer"
+        toolWindow.setIcon(AllIcons.Toolwindows.ToolWindowStructure)
+        refresh(project, toolWindow)
+
         toolWindow.setTitleActions(listOf(object : AnAction(), DumbAware {
             override fun update(e: AnActionEvent) {
                 e.presentation.icon = AllIcons.Actions.Refresh
@@ -74,14 +81,16 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
         val ktFile = PsiManager.getInstance(project).findFile(vf) as? KtFile ?: return
         val treeUiState = cache.get(ktFile) {
             val treeModel = ObjectTreeModel(
-                ktFile,
-                FirPureAbstractElement::class,
-                { it.getFirFile(it.getResolveState()) }) { consumer ->
-                acceptChildren(object : FirVisitorVoid() {
-                    override fun visitElement(element: FirElement) {
-                        if (element is FirPureAbstractElement) consumer(element)
-                    }
-                })
+                    ktFile,
+                    KtElement::class,
+                    { it }) { consumer ->
+                ApplicationManager.getApplication().runReadAction {
+                    this.takeIf { it.isValid }?.acceptChildren(object : KtVisitorVoid() {
+                        override fun visitKtElement(element: KtElement) {
+                            consumer(element)
+                        }
+                    })
+                }
             }
 
             treeModel.setupTreeUi(project)
@@ -91,13 +100,12 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
         if (toolWindow.contentManager.contents.firstOrNull() != treeUiState.pane) {
             toolWindow.contentManager.removeAllContents(true)
             toolWindow.contentManager.addContent(
-                toolWindow.contentManager.factory.createContent(
-                    treeUiState.pane,
-                    "Current File",
-                    true
-                )
+                    toolWindow.contentManager.factory.createContent(
+                            treeUiState.pane,
+                            "Current File",
+                            true
+                    )
             )
         }
     }
 }
-

@@ -17,6 +17,7 @@ import java.awt.FlowLayout
 import java.awt.Font
 import javax.swing.JComponent
 import javax.swing.JPanel
+import kotlin.reflect.full.createType
 
 fun label(
     s: String,
@@ -84,3 +85,44 @@ fun highlightInEditor(obj: Any, project: Project) {
         HighlighterTargetArea.EXACT_RANGE
     )
 }
+
+val unitType = Unit::class.createType()
+val skipMethodNames = setOf("copy", "toString", "delete", "clone")
+
+
+//private class CfgGraphViewer(state: TreeUiState, index: Int, graph: ControlFlowGraph) :
+//  ObjectViewer(state, index) {
+//
+//  private val nodeNameMap = mutableMapOf<CFGNode<*>, String>()
+//  private val nodeClassCounter = mutableMapOf<String, AtomicInteger>()
+//  val CFGNode<*>.name:String get() = nodeNameMap.computeIfAbsent(this) { node ->
+//    val nodeClassName = (node::class.simpleName?:node::class.toString()).removeSuffix("Node")
+//    nodeClassName + nodeClassCounter.computeIfAbsent(nodeClassName) { AtomicInteger() }.getAndIncrement()
+//  }
+//
+//  private val graph = SingleGraph("foo").apply {
+//    graph.nodes.forEach { node ->
+//      addNode(node.name)
+//    }
+//    val edgeCounter = AtomicInteger()
+//    val edgeNameMap = mutableMapOf<String, EdgeData>()
+//    graph.nodes.forEach { node ->
+//      node.followingNodes.forEach { to ->
+//        val edgeId = edgeCounter.getAndIncrement().toString()
+//        addEdge(edgeId, node.name, to.name)
+//      }
+//    }
+//  }
+//
+//  data class EdgeData(val from:CFGNode<*>, val to: CFGNode<*>, val edge: Edge?)
+//
+//  val viewer = SwingViewer(this.graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD).apply {
+//    enableAutoLayout()
+//  }
+//  override val view: JComponent = viewer.addDefaultView(false) as JComponent
+//
+//  override fun selectAndGetObject(name: String): Any? {
+//    return null
+//  }
+//}
+

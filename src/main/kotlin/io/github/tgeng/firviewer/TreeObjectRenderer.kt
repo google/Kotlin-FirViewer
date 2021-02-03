@@ -88,8 +88,7 @@ class TreeObjectRenderer : TreeCellRenderer {
       // is FirConstructedClassTypeParameterRef,
       // is FirOuterClassTypeParameterRef,
       is FirTypeParameterRef -> type(node) + render(e as FirPureAbstractElement)
-      else -> throw IllegalArgumentException("unknown type of FIR element $node")
+      else -> label(e.toString())
     }
   }
-
 }

@@ -1,8 +1,6 @@
 package io.github.tgeng.firviewer
 
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.components.JBScrollPane
@@ -13,18 +11,20 @@ import org.jetbrains.kotlin.fir.FirPureAbstractElement
 import org.jetbrains.kotlin.psi.KtFile
 import java.awt.event.MouseEvent
 import java.awt.event.MouseListener
+import java.lang.reflect.Modifier
+import java.util.concurrent.atomic.AtomicInteger
 import javax.swing.BoxLayout
 import javax.swing.JPanel
 import javax.swing.tree.TreePath
 import kotlin.reflect.KClass
 import kotlin.reflect.KVisibility
-import kotlin.reflect.full.memberProperties
+import kotlin.reflect.full.createType
 
 class ObjectTreeModel<T : Any>(
-    private val ktFile: KtFile,
-    private val tClass: KClass<T>,
-    val ktFileToT: (KtFile) -> T,
-    val acceptChildren: T.((T) -> Unit) -> Unit
+        private val ktFile: KtFile,
+        private val tClass: KClass<T>,
+        val ktFileToT: (KtFile) -> T,
+        val acceptChildren: T.((T) -> Unit) -> Unit
 ) : BaseTreeModel<TreeNode<T>>() {
     private var root: TreeNode<T>? = null
 
@@ -53,27 +53,26 @@ class ObjectTreeModel<T : Any>(
 
     private fun TreeNode<T>.refresh(path: List<TreeNode<T>>) {
         val newChildren = mutableListOf<TreeNode<T>>()
-        val childFirElements = t::class.memberProperties.flatMap { member ->
-            try {
-                if (member.parameters.size != 1 || member.visibility != KVisibility.PUBLIC) return@flatMap emptyList()
-                val f = member.call(t)
-                when {
-                    tClass.isInstance(f) -> listOf(f to member.name)
-                    f is Collection<*> -> f.mapNotNull { it as? FirPureAbstractElement }
-                        .mapIndexed { index, value -> value to member.name + "[$index]" }
-                    else -> emptyList()
-                }
-            } catch (e: Throwable) {
-                emptyList()
-            }
-        }.toMap()
+        val childFirElements = t::class.java.methods
+                .filter { it.name !in skipMethodNames && it.parameterCount == 0 && it.modifiers and Modifier.PUBLIC != 0 && it.returnType.simpleName != "void" }
+                .flatMap { method ->
+                    try {
+                        val f = method.invoke(t)
+                        when {
+                            tClass.isInstance(f) -> listOf(f to method.name)
+                            f is Collection<*> -> f.mapNotNull { it as? FirPureAbstractElement }
+                                    .mapIndexed { index, value -> value to method.name + "[$index]" }
+                            else -> emptyList()
+                        }
+                    } catch (e: Throwable) {
+                        emptyList()
+                    }
+                }.toMap()
+        val fieldCounter = AtomicInteger()
         t.acceptChildren { element ->
-            newChildren.add(
-                TreeNode(
-                    childFirElements[element]
-                        ?: throw IllegalStateException("element $element does not correspond to any members!"),
+            newChildren += TreeNode(
+                    childFirElements[element] ?: "<prop${fieldCounter.getAndIncrement()}>",
                     element
-                )
             )
         }
         currentChildren = newChildren
@@ -93,27 +92,27 @@ class ObjectTreeModel<T : Any>(
         }
         jbSplitter.secondComponent = JBScrollPane(tablePane)
         val state = TreeUiState(
-            jbSplitter,
-            tree,
-            this,
-            ObjectViewerUiState(tablePane)
+                jbSplitter,
+                tree,
+                this,
+                ObjectViewerUiState(tablePane)
         )
 
         tree.addTreeSelectionListener { e ->
             if (e.newLeadSelectionPath != null) state.selectedTreePath =
-                e.newLeadSelectionPath.getNamePath()
+                    e.newLeadSelectionPath.getNamePath()
             ApplicationManager.getApplication().runWriteAction {
                 val node = tree.lastSelectedPathComponent as? TreeNode<*> ?: return@runWriteAction
                 tablePane.removeAll()
                 state.objectViewerState.selectedTablePath.clear()
                 tablePane.add(
-                    ObjectViewer.createObjectViewer(
-                        project,
-                        node.t,
-                        state.objectViewerState,
-                        0,
-                        null
-                    ).view
+                        ObjectViewer.createObjectViewer(
+                                project,
+                                node.t,
+                                state.objectViewerState,
+                                0,
+                                null
+                        ).view
                 )
                 tablePane.repaint()
                 highlightInEditor(node.t, project)
