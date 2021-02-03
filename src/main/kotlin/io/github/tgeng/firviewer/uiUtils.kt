@@ -38,8 +38,7 @@ fun label(
         if (multiline) ("<html>" + s.replace("\n", "<br/>").replace(" ", "&nbsp;") + "</html>") else s
 ).apply {
     this.icon = icon
-    font =
-            font.deriveFont((if (bold) Font.BOLD else Font.PLAIN) + if (italic) Font.ITALIC else Font.PLAIN)
+    font = font.deriveFont((if (bold) Font.BOLD else Font.PLAIN) + if (italic) Font.ITALIC else Font.PLAIN)
 }
 
 fun render(e: FirPureAbstractElement) = JBLabel(e.render())

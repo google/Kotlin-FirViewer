@@ -52,6 +52,9 @@ object TableObjectRenderer : TableCellRenderer {
         if (table.isRowSelected(row)) {
             isOpaque = true
             background = table.selectionBackground
+        } else {
+            isOpaque = false
+            background = table.background
         }
     }
 }

@@ -29,9 +29,10 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
     private val cache = CacheBuilder.newBuilder().weakKeys().build<PsiFile, TreeUiState>()
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-//    System.setProperty("org.graphstream.ui", "swing")
         toolWindow.title = "FirViewer"
         toolWindow.setIcon(AllIcons.Toolwindows.ToolWindowHierarchy)
+        refresh(project, toolWindow)
+
         toolWindow.setTitleActions(listOf(object : AnAction(), DumbAware {
             override fun update(e: AnActionEvent) {
                 e.presentation.icon = AllIcons.Actions.Refresh
@@ -42,31 +43,7 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
             }
         }))
 
-        fun refresh() = ApplicationManager.getApplication().invokeLater {
-            if (!toolWindow.isVisible) return@invokeLater
-            refresh(project, toolWindow)
-        }
-        project.messageBus.connect().apply {
-            subscribe(AppTopics.FILE_DOCUMENT_SYNC, object : FileDocumentManagerListener {
-                override fun fileContentLoaded(file: VirtualFile, document: Document) {
-                    refresh()
-                    document.addDocumentListener(object : DocumentListener {
-                        override fun documentChanged(event: DocumentEvent) {
-                            refresh()
-                        }
-
-                        override fun bulkUpdateFinished(document: Document) {
-                            refresh()
-                        }
-                    })
-                }
-            })
-            subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
-                override fun fileOpened(source: FileEditorManager, file: VirtualFile) = refresh()
-                override fun fileClosed(source: FileEditorManager, file: VirtualFile) = refresh()
-                override fun selectionChanged(event: FileEditorManagerEvent) = refresh()
-            })
-        }
+        project.messageBus.connect().subscribe(EVENT_TOPIC, Runnable { refresh(project, toolWindow) })
     }
 
     private fun refresh(project: Project, toolWindow: ToolWindow) {
@@ -74,9 +51,9 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
         val ktFile = PsiManager.getInstance(project).findFile(vf) as? KtFile ?: return
         val treeUiState = cache.get(ktFile) {
             val treeModel = ObjectTreeModel(
-                ktFile,
-                FirPureAbstractElement::class,
-                { it.getFirFile(it.getResolveState()) }) { consumer ->
+                    ktFile,
+                    FirPureAbstractElement::class,
+                    { it.getFirFile(it.getResolveState()) }) { consumer ->
                 acceptChildren(object : FirVisitorVoid() {
                     override fun visitElement(element: FirElement) {
                         if (element is FirPureAbstractElement) consumer(element)
@@ -91,11 +68,11 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
         if (toolWindow.contentManager.contents.firstOrNull() != treeUiState.pane) {
             toolWindow.contentManager.removeAllContents(true)
             toolWindow.contentManager.addContent(
-                toolWindow.contentManager.factory.createContent(
-                    treeUiState.pane,
-                    "Current File",
-                    true
-                )
+                    toolWindow.contentManager.factory.createContent(
+                            treeUiState.pane,
+                            "Current File",
+                            true
+                    )
             )
         }
     }

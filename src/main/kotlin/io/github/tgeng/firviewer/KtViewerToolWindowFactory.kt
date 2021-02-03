@@ -39,32 +39,7 @@ class KtViewerToolWindowFactory : ToolWindowFactory {
             }
         }))
 
-        fun refresh() = ApplicationManager.getApplication().invokeLater {
-            if (!toolWindow.isVisible) return@invokeLater
-            refresh(project, toolWindow)
-        }
-
-        val docListener = object : DocumentListener {
-            override fun documentChanged(event: DocumentEvent) {
-                refresh()
-            }
-
-            override fun bulkUpdateFinished(document: Document) {
-                refresh()
-            }
-        }
-        project.messageBus.connect().apply {
-            subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
-                override fun fileOpened(source: FileEditorManager, file: VirtualFile) {
-                    refresh()
-                    FileDocumentManager.getInstance().getDocument(file)?.addDocumentListener(docListener)
-                }
-
-                override fun fileClosed(source: FileEditorManager, file: VirtualFile) {}
-
-                override fun selectionChanged(event: FileEditorManagerEvent) = refresh()
-            })
-        }
+        project.messageBus.connect().subscribe(EVENT_TOPIC, Runnable { refresh(project, toolWindow) })
     }
 
     private fun refresh(project: Project, toolWindow: ToolWindow) {

@@ -13,8 +13,15 @@
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow id="FirViewer" anchor="right" factoryClass="io.github.tgeng.firviewer.FirViewerToolWindowFactory"/>
         <toolWindow id="KtViewer" anchor="right" factoryClass="io.github.tgeng.firviewer.KtViewerToolWindowFactory"/>
+
+        <localInspection implementationClass="io.github.tgeng.firviewer.NotificationInspection"
+                         shortName="FirViewerInspection"
+                         enabledByDefault="true"
+                         language="kotlin" displayName="FirViewerInspection" groupPath="Kotlin" groupName="Other problems"/>
+
     </extensions>
 
     <actions>
     </actions>
+    <resource-bundle/>
 </idea-plugin>
