@@ -24,6 +24,7 @@ class TreeUiState(
         objectViewerState.tablePane.components.last() as? ObjectViewer ?: break
       if (!objectViewer.select(name)) break
     }
+    objectViewerState.tablePane.revalidate()
     objectViewerState.tablePane.repaint()
   }
 

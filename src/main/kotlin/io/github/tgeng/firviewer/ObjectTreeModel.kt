@@ -93,22 +93,21 @@ class ObjectTreeModel<T : Any>(
         tree.addTreeSelectionListener { e ->
             if (e.newLeadSelectionPath != null) state.selectedTreePath =
                     e.newLeadSelectionPath.getNamePath()
-            ApplicationManager.getApplication().runWriteAction {
-                val node = tree.lastSelectedPathComponent as? TreeNode<*> ?: return@runWriteAction
-                tablePane.removeAll()
-                state.objectViewerState.selectedTablePath.clear()
-                tablePane.add(
-                        ObjectViewer.createObjectViewer(
-                                project,
-                                node.t,
-                                state.objectViewerState,
-                                0,
-                                null
-                        ).view
-                )
-                tablePane.repaint()
-                highlightInEditor(node.t, project)
-            }
+            val node = tree.lastSelectedPathComponent as? TreeNode<*> ?: return@addTreeSelectionListener
+            tablePane.removeAll()
+            state.objectViewerState.selectedTablePath.clear()
+            tablePane.add(
+                    ObjectViewer.createObjectViewer(
+                            project,
+                            node.t,
+                            state.objectViewerState,
+                            0,
+                            null
+                    ).view
+            )
+            highlightInEditor(node.t, project)
+            tablePane.revalidate()
+            tablePane.repaint()
         }
         tree.addMouseListener(object : MouseListener {
             override fun mouseClicked(e: MouseEvent) {}

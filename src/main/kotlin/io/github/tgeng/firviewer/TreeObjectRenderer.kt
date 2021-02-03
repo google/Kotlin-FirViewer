@@ -1,6 +1,7 @@
 package io.github.tgeng.firviewer
 
 import com.intellij.icons.AllIcons
+import com.intellij.psi.PsiFile
 import org.jetbrains.kotlin.fir.FirLabel
 import org.jetbrains.kotlin.fir.FirPureAbstractElement
 import org.jetbrains.kotlin.fir.contracts.FirContractDescription
@@ -32,6 +33,7 @@ import org.jetbrains.kotlin.fir.expressions.impl.FirStubStatement
 import org.jetbrains.kotlin.fir.references.FirReference
 import org.jetbrains.kotlin.fir.types.FirTypeProjection
 import org.jetbrains.kotlin.fir.types.FirTypeRef
+import org.jetbrains.kotlin.psi.*
 import java.awt.Component
 import javax.swing.JTree
 import javax.swing.tree.TreeCellRenderer
@@ -88,6 +90,16 @@ class TreeObjectRenderer : TreeCellRenderer {
       // is FirConstructedClassTypeParameterRef,
       // is FirOuterClassTypeParameterRef,
       is FirTypeParameterRef -> type(node) + render(e as FirPureAbstractElement)
+      is PsiFile -> type(node) + label(e.name)
+      is KtDeclaration -> type(node) + label(e.name ?: "<anonymous>").apply {
+        when (e) {
+          is KtClassOrObject -> icon = AllIcons.Nodes.Class
+          is KtFunction -> icon = AllIcons.Nodes.Function
+          is KtProperty -> icon = AllIcons.Nodes.Property
+          is KtVariableDeclaration -> icon = AllIcons.Nodes.Variable
+        }
+      }
+      is KtElement -> type(node) + label(e.text)
       else -> label(e.toString())
     }
   }

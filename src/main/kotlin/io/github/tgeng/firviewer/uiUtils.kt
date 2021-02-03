@@ -7,17 +7,22 @@ import com.intellij.openapi.editor.markup.HighlighterTargetArea
 import com.intellij.openapi.editor.markup.TextAttributes
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
+import com.intellij.psi.PsiElement
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.scale.JBUIScale
 import org.jetbrains.kotlin.fir.FirPureAbstractElement
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.render
+import org.jetbrains.kotlin.psi.psiUtil.endOffset
+import org.jetbrains.kotlin.psi.psiUtil.startOffset
 import java.awt.Color
 import java.awt.FlowLayout
 import java.awt.Font
+import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import javax.swing.JComponent
 import javax.swing.JPanel
+import kotlin.reflect.KProperty
 import kotlin.reflect.KVisibility
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.memberProperties
@@ -37,7 +42,7 @@ fun label(
 fun render(e: FirPureAbstractElement) = JBLabel(e.render())
 fun type(e: TreeNode<*>): JComponent {
     val nameAndType = label(
-            if (e.name == "") {
+            if (e.name == "" || e.name.startsWith('<')) {
                 ""
             } else {
                 e.name + ": "
@@ -73,6 +78,7 @@ operator fun JComponent.plus(that: JComponent): JPanel {
 fun highlightInEditor(obj: Any, project: Project) {
     val (startOffset, endOffset) = when (obj) {
         is FirPureAbstractElement -> obj.source?.let { it.startOffset to it.endOffset }
+        is PsiElement -> obj.startOffset to obj.endOffset
         else -> null
     } ?: return
     val editorManager = FileEditorManager.getInstance(project) ?: return
@@ -92,10 +98,11 @@ fun highlightInEditor(obj: Any, project: Project) {
 val unitType = Unit::class.createType()
 val skipMethodNames = setOf("copy", "toString", "delete", "clone", "getUserDataString")
 
-fun Any.traverseObjectProperty(fn: (name: String, value: Any?) -> Unit) {
+fun Any.traverseObjectProperty(propFilter: (KProperty<*>) -> Boolean = { true }, methodFilter: (Method) -> Boolean = { true },
+                               fn: (name: String, value: Any?) -> Unit) {
     try {
         this::class.memberProperties
-                .filter { it.parameters.size == 1 && it.visibility == KVisibility.PUBLIC && it.returnType != unitType }
+                .filter { propFilter(it) && it.parameters.size == 1 && it.visibility == KVisibility.PUBLIC && it.returnType != unitType }
                 .forEach { prop ->
                     val value = try {
                         prop.call(this)
@@ -107,7 +114,8 @@ fun Any.traverseObjectProperty(fn: (name: String, value: Any?) -> Unit) {
     } catch (e: Throwable) {
         // fallback to traverse with Java reflection
         this::class.java.methods
-                .filter { it.name !in skipMethodNames && it.parameterCount == 0 && it.modifiers and Modifier.PUBLIC != 0 && it.returnType.simpleName != "void" }
+                .filter { methodFilter(it) && it.name !in skipMethodNames && it.parameterCount == 0 && it.modifiers and Modifier.PUBLIC != 0 && it.returnType.simpleName != "void" }
+                .distinctBy { it.name }
                 .forEach { method ->
                     val value = try {
                         method.invoke(this)

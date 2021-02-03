@@ -32,6 +32,7 @@ abstract class ObjectViewer(
         }
         tablePane.add(nextViewer.view)
         state.selectedTablePath.add(name)
+        tablePane.revalidate()
         tablePane.repaint()
         return true
     }

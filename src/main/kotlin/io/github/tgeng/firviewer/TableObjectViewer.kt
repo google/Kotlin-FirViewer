@@ -3,7 +3,6 @@ package io.github.tgeng.firviewer
 import com.google.common.primitives.Primitives
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
-import com.intellij.ui.plaf.beg.BegResources.m
 import com.intellij.ui.table.JBTable
 import org.jetbrains.kotlin.fir.utils.ArrayMap
 import org.jetbrains.kotlin.fir.utils.AttributeArrayOwner
@@ -14,7 +13,6 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtElement
 import java.awt.Component
 import java.awt.Dimension
-import java.lang.reflect.Modifier
 import java.util.concurrent.ConcurrentHashMap
 import javax.swing.*
 import javax.swing.table.AbstractTableModel
@@ -35,6 +33,7 @@ class TableObjectViewer(
         ObjectViewer(project, state, index, elementToAnalyze) {
     private val _model = ObjectTableModel(obj, state, elementToAnalyze)
     private val table = FittingTable(_model).apply {
+        setDefaultRenderer(Any::class.java, TableObjectRenderer)
         rowSelectionAllowed = true
         setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
         selectionModel.addListSelectionListener { e ->
@@ -70,13 +69,17 @@ class TableObjectViewer(
 }
 
 private open class FittingTable(model: TableModel) : JBTable(model) {
+
     init {
-        setDefaultRenderer(Any::class.java, TableObjectRenderer)
         setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN)
     }
 
+    private val measured: Array<BooleanArray> = Array(model.columnCount) { BooleanArray(model.rowCount) }
+
     override fun prepareRenderer(renderer: TableCellRenderer, row: Int, column: Int): Component {
         val component = super.prepareRenderer(renderer, row, column)
+        if (measured[column][row]) return component
+        measured[column][row] = true
         val rendererWidth = component.preferredSize.width
         val tableColumn = getColumnModel().getColumn(column)
         tableColumn.preferredWidth =
@@ -106,9 +109,10 @@ private class ObjectTableModel(
         }
         is Map<*, *> -> obj.map { (k, v) -> RowData(k?.getValueAndId() ?: "", v?.getTypeAndId(), v) }
         is AttributeArrayOwner<*, *> -> getAttributesBasedRows()
-        is KtType, is PsiElement, is KtSymbol -> getObjectPropertyMembersBasedRows()// + getKtAnalysisSessionBasedRows()
+        is PsiElement -> getObjectPropertyMembersBasedRows()
+        is KtType, is KtSymbol -> getObjectPropertyMembersBasedRows()// + getKtAnalysisSessionBasedRows()
         else -> getObjectPropertyMembersBasedRows()
-    }
+    }.sortedBy { it.name }
 
     private fun getAttributesBasedRows(): List<RowData> {
         val arrayMap =
@@ -130,6 +134,12 @@ private class ObjectTableModel(
     private fun getObjectPropertyMembersBasedRows() = try {
         val result = mutableListOf<RowData>()
         obj.traverseObjectProperty { name, value ->
+            if (value == null ||
+                    value is Collection<*> && value.isEmpty() ||
+                    value is Map<*, *> && value.isEmpty()
+            ) {
+                return@traverseObjectProperty
+            }
             result += RowData(name, value?.getTypeAndId(), value)
         }
         result

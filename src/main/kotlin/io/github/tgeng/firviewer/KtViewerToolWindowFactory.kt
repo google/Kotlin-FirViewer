@@ -1,7 +1,6 @@
 package io.github.tgeng.firviewer
 
 import com.google.common.cache.CacheBuilder
-import com.intellij.AppTopics
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -9,23 +8,14 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
-import com.intellij.openapi.fileEditor.FileDocumentManagerListener
-import com.intellij.openapi.fileEditor.FileEditorManager
-import com.intellij.openapi.fileEditor.FileEditorManagerEvent
-import com.intellij.openapi.fileEditor.FileEditorManagerListener
+import com.intellij.openapi.fileEditor.*
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
-import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
-import org.jetbrains.kotlin.fir.FirElement
-import org.jetbrains.kotlin.fir.FirPureAbstractElement
-import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
-import org.jetbrains.kotlin.idea.fir.low.level.api.api.getFirFile
-import org.jetbrains.kotlin.idea.fir.low.level.api.api.getResolveState
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtVisitorVoid
@@ -53,24 +43,25 @@ class KtViewerToolWindowFactory : ToolWindowFactory {
             if (!toolWindow.isVisible) return@invokeLater
             refresh(project, toolWindow)
         }
-        project.messageBus.connect().apply {
-            subscribe(AppTopics.FILE_DOCUMENT_SYNC, object : FileDocumentManagerListener {
-                override fun fileContentLoaded(file: VirtualFile, document: Document) {
-                    refresh()
-                    document.addDocumentListener(object : DocumentListener {
-                        override fun documentChanged(event: DocumentEvent) {
-                            refresh()
-                        }
 
-                        override fun bulkUpdateFinished(document: Document) {
-                            refresh()
-                        }
-                    })
-                }
-            })
+        val docListener = object : DocumentListener {
+            override fun documentChanged(event: DocumentEvent) {
+                refresh()
+            }
+
+            override fun bulkUpdateFinished(document: Document) {
+                refresh()
+            }
+        }
+        project.messageBus.connect().apply {
             subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
-                override fun fileOpened(source: FileEditorManager, file: VirtualFile) = refresh()
-                override fun fileClosed(source: FileEditorManager, file: VirtualFile) = refresh()
+                override fun fileOpened(source: FileEditorManager, file: VirtualFile) {
+                    refresh()
+                    FileDocumentManager.getInstance().getDocument(file)?.addDocumentListener(docListener)
+                }
+
+                override fun fileClosed(source: FileEditorManager, file: VirtualFile) {}
+
                 override fun selectionChanged(event: FileEditorManagerEvent) = refresh()
             })
         }
