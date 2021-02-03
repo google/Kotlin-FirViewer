@@ -14,6 +14,7 @@ import org.jetbrains.kotlin.fir.utils.AttributeArrayOwner
 import org.jetbrains.kotlin.idea.frontend.api.types.KtType
 import org.jetbrains.kotlin.psi.KtDeclaration
 import java.awt.Component
+import javax.swing.JComponent
 import javax.swing.JTable
 import javax.swing.table.TableCellRenderer
 import kotlin.reflect.full.memberProperties
@@ -28,6 +29,7 @@ object TableObjectRenderer : TableCellRenderer {
             row: Int,
             column: Int
     ): Component = when (value) {
+        is JComponent -> value
         is Collection<*> -> label("size = " + value.size)
         is Map<*, *> -> label("size =" + value.size)
         is CFGNode<*> -> label(value.render())

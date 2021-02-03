@@ -7,10 +7,13 @@ import com.intellij.ui.table.JBTable
 import org.jetbrains.kotlin.fir.utils.ArrayMap
 import org.jetbrains.kotlin.fir.utils.AttributeArrayOwner
 import org.jetbrains.kotlin.fir.utils.TypeRegistry
+import org.jetbrains.kotlin.idea.frontend.api.KtAnalysisSession
+import org.jetbrains.kotlin.idea.frontend.api.analyze
 import org.jetbrains.kotlin.idea.frontend.api.symbols.KtSymbol
 import org.jetbrains.kotlin.idea.frontend.api.types.KtType
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtElement
+import java.awt.Color
 import java.awt.Component
 import java.awt.Dimension
 import java.util.concurrent.ConcurrentHashMap
@@ -19,6 +22,7 @@ import javax.swing.table.AbstractTableModel
 import javax.swing.table.TableCellRenderer
 import javax.swing.table.TableModel
 import kotlin.reflect.KClass
+import kotlin.reflect.KVisibility
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.isAccessible
 
@@ -40,14 +44,14 @@ class TableObjectViewer(
             if (e.valueIsAdjusting) return@addListSelectionListener
             val row = selectedRow
             val name = _model.rows[row].name
-            select(name)
+            select(name.text)
         }
     }
 
     override val view: JComponent = TableWrapper()
 
     override fun selectAndGetObject(name: String): Any? {
-        val index = _model.rows.indexOfFirst { it.name == name }
+        val index = _model.rows.indexOfFirst { it.name.text == name }
         if (index == -1) return null
         table.setRowSelectionInterval(index, index)
         return _model.rows[index].value?.also {
@@ -68,10 +72,12 @@ class TableObjectViewer(
     }
 }
 
-private open class FittingTable(model: TableModel) : JBTable(model) {
+private class FittingTable(model: TableModel) : JBTable(model) {
 
     init {
         setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN)
+        getTableHeader().foreground = getTableHeader().background
+        getTableHeader().background = Color.GRAY
     }
 
     private val measured: Array<BooleanArray> = Array(model.columnCount) { BooleanArray(model.rowCount) }
@@ -101,18 +107,17 @@ private class ObjectTableModel(
         private val elementToAnalyze: KtElement?
 ) :
         AbstractTableModel() {
-    data class RowData(val name: String, val type: String?, val value: Any?)
+    data class RowData(val name: JLabel, val type: String?, val value: Any?)
 
     val rows: List<RowData> = when (obj) {
         is Iterable<*> -> obj.mapIndexed { index, value ->
-            RowData(index.toString(), value?.getTypeAndId(), value)
+            RowData(label(index.toString()), value?.getTypeAndId(), value)
         }
-        is Map<*, *> -> obj.map { (k, v) -> RowData(k?.getValueAndId() ?: "", v?.getTypeAndId(), v) }
+        is Map<*, *> -> obj.map { (k, v) -> RowData(label(k?.getValueAndId() ?: ""), v?.getTypeAndId(), v) }
         is AttributeArrayOwner<*, *> -> getAttributesBasedRows()
-        is PsiElement -> getObjectPropertyMembersBasedRows()
-        is KtType, is KtSymbol -> getObjectPropertyMembersBasedRows()// + getKtAnalysisSessionBasedRows()
+        is PsiElement, is KtType, is KtSymbol -> getObjectPropertyMembersBasedRows()// + getKtAnalysisSessionBasedRows()
         else -> getObjectPropertyMembersBasedRows()
-    }.sortedBy { it.name }
+    }.sortedBy { it.name.text }
 
     private fun getAttributesBasedRows(): List<RowData> {
         val arrayMap =
@@ -127,7 +132,7 @@ private class ObjectTableModel(
                         .call(typeRegistry) as ConcurrentHashMap<KClass<*>, Int>
         return idPerType.mapNotNull { (key, id) ->
             val value = arrayMap[id] ?: return@mapNotNull null
-            RowData(key.simpleName ?: key.toString(), value.getTypeAndId(), value)
+            RowData(label(key.simpleName ?: key.toString()), value.getTypeAndId(), value)
         }
     }
 
@@ -140,25 +145,25 @@ private class ObjectTableModel(
             ) {
                 return@traverseObjectProperty
             }
-            result += RowData(name, value?.getTypeAndId(), value)
+            result += RowData(label(name), value?.getTypeAndId(), value)
         }
         result
     } catch (e: Throwable) {
-        listOf(RowData("", e?.getTypeAndId(), e))
+        listOf(RowData(label(""), e?.getTypeAndId(), e))
     }
 
 //    private fun getKtAnalysisSessionBasedRows(): List<RowData> {
 //        if (elementToAnalyze == null) return emptyList()
 //        return analyze(elementToAnalyze) {
 //            KtAnalysisSession::class.members.filter { it.visibility == KVisibility.PUBLIC && it.parameters.size == 2 }
-//                .mapNotNull { prop ->
-//                    try {
-//                        val value = prop.call(this, obj)
-//                        RowData(prop.name, value?.getTypeAndId(), value)
-//                    } catch (e: Throwable) {
-//                        null
+//                    .mapNotNull { prop ->
+//                        try {
+//                            val value = prop.call(this, obj)
+//                            RowData(label(prop.name), value?.getTypeAndId(), value)
+//                        } catch (e: Throwable) {
+//                            null
+//                        }
 //                    }
-//                }
 //        }
 //    }
 

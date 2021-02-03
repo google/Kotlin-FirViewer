@@ -39,68 +39,59 @@ import javax.swing.JTree
 import javax.swing.tree.TreeCellRenderer
 
 class TreeObjectRenderer : TreeCellRenderer {
-  override fun getTreeCellRendererComponent(
-    tree: JTree,
-    value: Any,
-    selected: Boolean,
-    expanded: Boolean,
-    leaf: Boolean,
-    row: Int,
-    hasFocus: Boolean
-  ): Component {
-    val node = value as? TreeNode<*> ?: return label("nothing to show")
-    return when (val e = node.t) {
-      is FirAnonymousInitializer -> type(node) + render(e)
-      is FirArgumentList -> type(node) + render(e)
-      is FirAssignmentOperatorStatement -> type(node) + render(e)
-      is FirAugmentedArraySetCall -> type(node) + render(e)
-      is FirCatch -> type(node) + render(e)
-      is FirConstructor -> type(node) + label("<init>").apply { icon = AllIcons.Nodes.Function }
-      is FirContractDescription -> type(node) + render(e)
-      is FirDeclarationStatusImpl -> type(node) + render(e)
-      is FirDelegatedConstructorCall -> type(node) + render(e)
-      is FirEffectDeclaration -> type(node) + render(e)
-      is FirErrorFunction -> type(node) + render(e)
-      is FirExpression -> type(node) + render(e)
-      is FirFile -> type(node) + label(e.name)
-      is FirImport -> type(node) + render(e)
-      is FirLabel -> type(node) + render(e)
-      is FirLoop -> type(node) + render(e)
-      is FirPropertyAccessor -> type(node) + render(e)
-      is FirReference -> type(node) + render(e)
-      is FirRegularClass -> type(node) + label(e.name.asString()).apply {
-        icon = AllIcons.Nodes.Class
-      }
-      is FirSimpleFunction -> type(node) + label(e.name.asString()).apply {
-        icon = AllIcons.Nodes.Function
-      }
-      is FirStubStatement -> type(node) + render(e)
-      is FirTypeAlias -> type(node) + render(e)
-      is FirTypeParameter -> type(node) + render(e)
-      is FirTypeProjection -> type(node) + render(e)
-      is FirTypeRef -> type(node) + render(e)
-      is FirProperty -> type(node) + label(e.name.asString()).apply {
-        icon = AllIcons.Nodes.Property
-      }
-      is FirVariable<*> -> type(node) + label(e.name.asString()).apply {
-        icon = AllIcons.Nodes.Variable
-      }
-      is FirVariableAssignment -> type(node) + render(e)
-      is FirWhenBranch -> type(node) + render(e)
-      // is FirConstructedClassTypeParameterRef,
-      // is FirOuterClassTypeParameterRef,
-      is FirTypeParameterRef -> type(node) + render(e as FirPureAbstractElement)
-      is PsiFile -> type(node) + label(e.name)
-      is KtDeclaration -> type(node) + label(e.name ?: "<anonymous>").apply {
-        when (e) {
-          is KtClassOrObject -> icon = AllIcons.Nodes.Class
-          is KtFunction -> icon = AllIcons.Nodes.Function
-          is KtProperty -> icon = AllIcons.Nodes.Property
-          is KtVariableDeclaration -> icon = AllIcons.Nodes.Variable
+    override fun getTreeCellRendererComponent(
+            tree: JTree,
+            value: Any,
+            selected: Boolean,
+            expanded: Boolean,
+            leaf: Boolean,
+            row: Int,
+            hasFocus: Boolean
+    ): Component {
+        val node = value as? TreeNode<*> ?: return label("nothing to show")
+        return when (val e = node.t) {
+            is FirAnonymousInitializer -> type(node) + render(e)
+            is FirArgumentList -> type(node) + render(e)
+            is FirAssignmentOperatorStatement -> type(node) + render(e)
+            is FirAugmentedArraySetCall -> type(node) + render(e)
+            is FirCatch -> type(node) + render(e)
+            is FirConstructor -> type(node) + label("<init>", icon = AllIcons.Nodes.Function)
+            is FirContractDescription -> type(node) + render(e)
+            is FirDeclarationStatusImpl -> type(node) + render(e)
+            is FirDelegatedConstructorCall -> type(node) + render(e)
+            is FirEffectDeclaration -> type(node) + render(e)
+            is FirErrorFunction -> type(node) + render(e)
+            is FirExpression -> type(node) + render(e)
+            is FirFile -> type(node) + label(e.name)
+            is FirImport -> type(node) + render(e)
+            is FirLabel -> type(node) + render(e)
+            is FirLoop -> type(node) + render(e)
+            is FirPropertyAccessor -> type(node) + render(e)
+            is FirReference -> type(node) + render(e)
+            is FirRegularClass -> type(node) + label(e.name.asString(), icon = AllIcons.Nodes.Class)
+            is FirSimpleFunction -> type(node) + label(e.name.asString(), icon = AllIcons.Nodes.Function)
+            is FirStubStatement -> type(node) + render(e)
+            is FirTypeAlias -> type(node) + render(e)
+            is FirTypeParameter -> type(node) + render(e)
+            is FirTypeProjection -> type(node) + render(e)
+            is FirTypeRef -> type(node) + render(e)
+            is FirProperty -> type(node) + label(e.name.asString(), icon = AllIcons.Nodes.Property)
+            is FirVariable<*> -> type(node) + label(e.name.asString(), icon = AllIcons.Nodes.Variable)
+            is FirVariableAssignment -> type(node) + render(e)
+            is FirWhenBranch -> type(node) + render(e)
+            // is FirConstructedClassTypeParameterRef,
+            // is FirOuterClassTypeParameterRef,
+            is FirTypeParameterRef -> type(node) + render(e as FirPureAbstractElement)
+            is PsiFile -> type(node) + label(e.name)
+            is KtDeclaration -> type(node) + label(e.name ?: "<anonymous>", icon = when (e) {
+                is KtClassOrObject -> AllIcons.Nodes.Class
+                is KtFunction -> AllIcons.Nodes.Function
+                is KtProperty -> AllIcons.Nodes.Property
+                is KtVariableDeclaration -> AllIcons.Nodes.Variable
+                else -> null
+            })
+            is KtElement -> type(node) + label(e.text)
+            else -> label(e.toString())
         }
-      }
-      is KtElement -> type(node) + label(e.text)
-      else -> label(e.toString())
     }
-  }
 }

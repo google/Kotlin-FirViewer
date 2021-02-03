@@ -20,6 +20,7 @@ import java.awt.FlowLayout
 import java.awt.Font
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
+import javax.swing.Icon
 import javax.swing.JComponent
 import javax.swing.JPanel
 import kotlin.reflect.KProperty
@@ -31,10 +32,12 @@ fun label(
         s: String,
         bold: Boolean = false,
         italic: Boolean = false,
-        multiline: Boolean = false
+        multiline: Boolean = false,
+        icon: Icon? = null
 ) = JBLabel(
         if (multiline) ("<html>" + s.replace("\n", "<br/>").replace(" ", "&nbsp;") + "</html>") else s
 ).apply {
+    this.icon = icon
     font =
             font.deriveFont((if (bold) Font.BOLD else Font.PLAIN) + if (italic) Font.ITALIC else Font.PLAIN)
 }
