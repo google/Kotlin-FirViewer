@@ -15,31 +15,34 @@ import org.jetbrains.kotlin.fir.render
 import java.awt.Color
 import java.awt.FlowLayout
 import java.awt.Font
+import java.lang.reflect.Modifier
 import javax.swing.JComponent
 import javax.swing.JPanel
+import kotlin.reflect.KVisibility
 import kotlin.reflect.full.createType
+import kotlin.reflect.full.memberProperties
 
 fun label(
-    s: String,
-    bold: Boolean = false,
-    italic: Boolean = false,
-    multiline: Boolean = false
+        s: String,
+        bold: Boolean = false,
+        italic: Boolean = false,
+        multiline: Boolean = false
 ) = JBLabel(
-    if (multiline) ("<html>" + s.replace("\n", "<br/>").replace(" ", "&nbsp;") + "</html>") else s
+        if (multiline) ("<html>" + s.replace("\n", "<br/>").replace(" ", "&nbsp;") + "</html>") else s
 ).apply {
     font =
-        font.deriveFont((if (bold) Font.BOLD else Font.PLAIN) + if (italic) Font.ITALIC else Font.PLAIN)
+            font.deriveFont((if (bold) Font.BOLD else Font.PLAIN) + if (italic) Font.ITALIC else Font.PLAIN)
 }
 
 fun render(e: FirPureAbstractElement) = JBLabel(e.render())
 fun type(e: TreeNode<*>): JComponent {
     val nameAndType = label(
-        if (e.name == "") {
-            ""
-        } else {
-            e.name + ": "
-        } + e.t::class.simpleName,
-        bold = true
+            if (e.name == "") {
+                ""
+            } else {
+                e.name + ": "
+            } + e.t::class.simpleName,
+            bold = true
     )
     val address = label("@" + Integer.toHexString(System.identityHashCode(e.t)))
     val nameTypeAndAddress = nameAndType + address
@@ -76,19 +79,45 @@ fun highlightInEditor(obj: Any, project: Project) {
     val editor: Editor = editorManager.selectedTextEditor ?: return
     editor.markupModel.removeAllHighlighters()
     val textAttributes =
-        TextAttributes(null, null, Color.GRAY, EffectType.LINE_UNDERSCORE, Font.PLAIN)
+            TextAttributes(null, null, Color.GRAY, EffectType.LINE_UNDERSCORE, Font.PLAIN)
     editor.markupModel.addRangeHighlighter(
-        startOffset,
-        endOffset,
-        HighlighterLayer.CARET_ROW,
-        textAttributes,
-        HighlighterTargetArea.EXACT_RANGE
+            startOffset,
+            endOffset,
+            HighlighterLayer.CARET_ROW,
+            textAttributes,
+            HighlighterTargetArea.EXACT_RANGE
     )
 }
 
 val unitType = Unit::class.createType()
-val skipMethodNames = setOf("copy", "toString", "delete", "clone")
+val skipMethodNames = setOf("copy", "toString", "delete", "clone", "getUserDataString")
 
+fun Any.traverseObjectProperty(fn: (name: String, value: Any?) -> Unit) {
+    try {
+        this::class.memberProperties
+                .filter { it.parameters.size == 1 && it.visibility == KVisibility.PUBLIC && it.returnType != unitType }
+                .forEach { prop ->
+                    val value = try {
+                        prop.call(this)
+                    } catch (e: Throwable) {
+                        return@forEach
+                    }
+                    fn(prop.name, value)
+                }
+    } catch (e: Throwable) {
+        // fallback to traverse with Java reflection
+        this::class.java.methods
+                .filter { it.name !in skipMethodNames && it.parameterCount == 0 && it.modifiers and Modifier.PUBLIC != 0 && it.returnType.simpleName != "void" }
+                .forEach { method ->
+                    val value = try {
+                        method.invoke(this)
+                    } catch (e: Throwable) {
+                        return@forEach
+                    }
+                    fn(method.name, value)
+                }
+    }
+}
 
 //private class CfgGraphViewer(state: TreeUiState, index: Int, graph: ControlFlowGraph) :
 //  ObjectViewer(state, index) {

@@ -7,18 +7,14 @@ import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.tree.BaseTreeModel
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.tree.TreeUtil
-import org.jetbrains.kotlin.fir.FirPureAbstractElement
 import org.jetbrains.kotlin.psi.KtFile
 import java.awt.event.MouseEvent
 import java.awt.event.MouseListener
-import java.lang.reflect.Modifier
 import java.util.concurrent.atomic.AtomicInteger
 import javax.swing.BoxLayout
 import javax.swing.JPanel
 import javax.swing.tree.TreePath
 import kotlin.reflect.KClass
-import kotlin.reflect.KVisibility
-import kotlin.reflect.full.createType
 
 class ObjectTreeModel<T : Any>(
         private val ktFile: KtFile,
@@ -53,25 +49,21 @@ class ObjectTreeModel<T : Any>(
 
     private fun TreeNode<T>.refresh(path: List<TreeNode<T>>) {
         val newChildren = mutableListOf<TreeNode<T>>()
-        val childFirElements = t::class.java.methods
-                .filter { it.name !in skipMethodNames && it.parameterCount == 0 && it.modifiers and Modifier.PUBLIC != 0 && it.returnType.simpleName != "void" }
-                .flatMap { method ->
-                    try {
-                        val f = method.invoke(t)
-                        when {
-                            tClass.isInstance(f) -> listOf(f to method.name)
-                            f is Collection<*> -> f.mapNotNull { it as? FirPureAbstractElement }
-                                    .mapIndexed { index, value -> value to method.name + "[$index]" }
-                            else -> emptyList()
-                        }
-                    } catch (e: Throwable) {
-                        emptyList()
-                    }
-                }.toMap()
+        val childNameAndValues = mutableListOf<Pair<Any?, String>>()
+        t.traverseObjectProperty { name, value ->
+            when {
+                tClass.isInstance(value) -> childNameAndValues += (value to name)
+                value is Collection<*> -> value.filter { tClass.isInstance(it) }
+                        .forEachIndexed { index, value -> childNameAndValues += value to "$name[$index]" }
+                else -> {
+                }
+            }
+        }
+        val childMap = childNameAndValues.toMap()
         val fieldCounter = AtomicInteger()
         t.acceptChildren { element ->
             newChildren += TreeNode(
-                    childFirElements[element] ?: "<prop${fieldCounter.getAndIncrement()}>",
+                    childMap[element] ?: "<prop${fieldCounter.getAndIncrement()}>",
                     element
             )
         }

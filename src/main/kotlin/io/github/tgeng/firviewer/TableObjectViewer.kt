@@ -128,16 +128,11 @@ private class ObjectTableModel(
     }
 
     private fun getObjectPropertyMembersBasedRows() = try {
-        obj::class.java.methods
-                .filter { it.name !in skipMethodNames && it.parameterCount == 0 && it.modifiers and Modifier.PUBLIC != 0 && it.returnType.simpleName != "void" }
-                .mapNotNull { method ->
-                    val value = try {
-                        method.invoke(obj)
-                    } catch (e: Throwable) {
-                        e
-                    }
-                    RowData(method.name, value?.getTypeAndId(), value)
-                }
+        val result = mutableListOf<RowData>()
+        obj.traverseObjectProperty { name, value ->
+            result += RowData(name, value?.getTypeAndId(), value)
+        }
+        result
     } catch (e: Throwable) {
         listOf(RowData("", e?.getTypeAndId(), e))
     }
