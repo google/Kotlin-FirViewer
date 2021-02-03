@@ -1,6 +1,5 @@
 package io.github.tgeng.firviewer
 
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.components.JBScrollPane
@@ -95,16 +94,17 @@ class ObjectTreeModel<T : Any>(
                     e.newLeadSelectionPath.getNamePath()
             val node = tree.lastSelectedPathComponent as? TreeNode<*> ?: return@addTreeSelectionListener
             tablePane.removeAll()
+            state.objectViewerState.objectViewers.clear()
             state.objectViewerState.selectedTablePath.clear()
-            tablePane.add(
-                    ObjectViewer.createObjectViewer(
-                            project,
-                            node.t,
-                            state.objectViewerState,
-                            0,
-                            null
-                    ).view
+            val objectViewer = ObjectViewer.createObjectViewer(
+                    project,
+                    node.t,
+                    state.objectViewerState,
+                    0,
+                    null
             )
+            state.objectViewerState.objectViewers.add(objectViewer)
+            tablePane.add(objectViewer.view)
             highlightInEditor(node.t, project)
             tablePane.revalidate()
             tablePane.repaint()
