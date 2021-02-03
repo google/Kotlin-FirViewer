@@ -6,6 +6,7 @@ import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.tree.BaseTreeModel
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.tree.TreeUtil
+import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtFile
 import java.awt.event.MouseEvent
 import java.awt.event.MouseListener
@@ -101,7 +102,7 @@ class ObjectTreeModel<T : Any>(
                     node.t,
                     state.objectViewerState,
                     0,
-                    null
+                    node.t as? KtElement
             )
             state.objectViewerState.objectViewers.add(objectViewer)
             tablePane.add(objectViewer.view)

@@ -1,14 +1,14 @@
 package io.github.tgeng.firviewer
 
 import com.google.common.primitives.Primitives
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.ui.table.JBTable
 import org.jetbrains.kotlin.fir.utils.ArrayMap
 import org.jetbrains.kotlin.fir.utils.AttributeArrayOwner
 import org.jetbrains.kotlin.fir.utils.TypeRegistry
-import org.jetbrains.kotlin.idea.frontend.api.KtAnalysisSession
-import org.jetbrains.kotlin.idea.frontend.api.analyze
+import org.jetbrains.kotlin.idea.frontend.api.*
 import org.jetbrains.kotlin.idea.frontend.api.symbols.KtSymbol
 import org.jetbrains.kotlin.idea.frontend.api.types.KtType
 import org.jetbrains.kotlin.name.Name
@@ -75,6 +75,7 @@ class TableObjectViewer(
 private class FittingTable(model: TableModel) : JBTable(model) {
 
     init {
+        setMaxItemsForSizeCalculation(20)
         setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN)
         getTableHeader().foreground = getTableHeader().background
         getTableHeader().background = Color.GRAY
@@ -115,7 +116,7 @@ private class ObjectTableModel(
         }
         is Map<*, *> -> obj.map { (k, v) -> RowData(label(k?.getValueAndId() ?: ""), v?.getTypeAndId(), v) }
         is AttributeArrayOwner<*, *> -> getAttributesBasedRows()
-        is PsiElement, is KtType, is KtSymbol -> getObjectPropertyMembersBasedRows()// + getKtAnalysisSessionBasedRows()
+        is PsiElement, is KtType, is KtSymbol -> getKtAnalysisSessionBasedRows() + getObjectPropertyMembersBasedRows()
         else -> getObjectPropertyMembersBasedRows()
     }.sortedBy { it.name.text }
 
@@ -152,20 +153,29 @@ private class ObjectTableModel(
         listOf(RowData(label(""), e?.getTypeAndId(), e))
     }
 
-//    private fun getKtAnalysisSessionBasedRows(): List<RowData> {
-//        if (elementToAnalyze == null) return emptyList()
-//        return analyze(elementToAnalyze) {
-//            KtAnalysisSession::class.members.filter { it.visibility == KVisibility.PUBLIC && it.parameters.size == 2 }
-//                    .mapNotNull { prop ->
-//                        try {
-//                            val value = prop.call(this, obj)
-//                            RowData(label(prop.name), value?.getTypeAndId(), value)
-//                        } catch (e: Throwable) {
-//                            null
-//                        }
-//                    }
-//        }
-//    }
+    @OptIn(HackToForceAllowRunningAnalyzeOnEDT::class)
+    private fun getKtAnalysisSessionBasedRows(): List<RowData> {
+        if (elementToAnalyze == null) return emptyList()
+        return hackyAllowRunningOnEdt {
+            analyzeWithReadAction(elementToAnalyze) {
+                KtAnalysisSession::class.members.filter { it.visibility == KVisibility.PUBLIC && it.parameters.size == 2 && it.name != "equals" }
+                        .mapNotNull { prop ->
+                            try {
+                                val value = prop.call(this, obj)
+                                if (value == null ||
+                                        value is Collection<*> && value.isEmpty() ||
+                                        value is Map<*, *> && value.isEmpty()
+                                ) {
+                                    return@mapNotNull null
+                                }
+                                RowData(label(prop.name, icon = AllIcons.Nodes.Favorite), value?.getTypeAndId(), value)
+                            } catch (e: Throwable) {
+                                null
+                            }
+                        }
+            }
+        }
+    }
 
     private fun Any.getTypeAndId(): String {
         return when {
