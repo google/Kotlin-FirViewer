@@ -48,6 +48,7 @@ import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.resolve.dfa.cfg.CFGNode
 import org.jetbrains.kotlin.fir.resolve.dfa.cfg.ControlFlowGraph
 import org.jetbrains.kotlin.fir.resolve.dfa.cfg.Edge
+import org.jetbrains.kotlin.fir.resolve.dfa.cfg.render
 import org.jetbrains.kotlin.fir.types.FirTypeProjection
 import org.jetbrains.kotlin.fir.types.FirTypeRef
 import org.jetbrains.kotlin.fir.utils.ArrayMap
@@ -580,6 +581,7 @@ object ObjectRenderer : TableCellRenderer {
   ): Component = when (value) {
     is Collection<*> -> label("size = " + value.size)
     is Map<*, *> -> label("size =" + value.size)
+    is CFGNode<*> -> label(value.render())
     is FirElement -> label(value.render(), multiline = true)
     is AttributeArrayOwner<*, *> -> {
       val arrayMap =
