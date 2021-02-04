@@ -15,7 +15,10 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtElement
 import java.awt.Color
 import java.awt.Component
+import java.awt.Cursor
 import java.awt.Dimension
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
 import java.util.concurrent.ConcurrentHashMap
 import javax.swing.*
 import javax.swing.table.AbstractTableModel
@@ -46,6 +49,29 @@ class TableObjectViewer(
             val name = _model.rows[row].name
             select(name.text)
         }
+        val mouseListener = object : MouseAdapter() {
+            override fun mouseMoved(e: MouseEvent) {
+                val row = rowAtPoint(e.point)
+                // Only do the triggering if the row is already selected.
+                if (row != -1 && row == selectedRow && _model.rows[row].valueProvider != null) {
+                    cursor = Cursor(Cursor.HAND_CURSOR)
+                    toolTipText = "Click left button to trigger re-computation of this data."
+                } else {
+                    cursor = Cursor.getDefaultCursor()
+                    toolTipText = ""
+                }
+            }
+
+            override fun mouseReleased(e: MouseEvent) {
+                val row = rowAtPoint(e.point)
+                if (row == -1) return
+                if (row != selectedRow) return // Only do the triggering if the row is already selected.
+                _model.rows[row].value = _model.rows[row].valueProvider?.invoke()
+                repaint()
+            }
+        }
+        addMouseMotionListener(mouseListener)
+        addMouseListener(mouseListener)
     }
 
     override val view: JComponent = TableWrapper()
@@ -103,12 +129,12 @@ private class FittingTable(model: TableModel) : JBTable(model) {
 }
 
 private class ObjectTableModel(
-        private val obj: Any,
+        val obj: Any,
         val state: ObjectViewerUiState,
         private val elementToAnalyze: KtElement?
 ) :
         AbstractTableModel() {
-    data class RowData(val name: JLabel, val type: String?, val value: Any?)
+    class RowData(val name: JLabel, val type: String?, var value: Any?, val valueProvider: (() -> Any?)? = null)
 
     val rows: List<RowData> = when (obj) {
         is Iterable<*> -> obj.mapIndexed { index, value ->
@@ -165,7 +191,11 @@ private class ObjectTableModel(
                         .mapNotNull { prop ->
                             try {
                                 val value = prop.call(this, obj)
-                                RowData(label(prop.name, icon = AllIcons.Nodes.Favorite), value?.getTypeAndId(), value)
+                                RowData(label(prop.name, icon = AllIcons.Nodes.Favorite), value?.getTypeAndId(), value) {
+                                    hackyAllowRunningOnEdt {
+                                        prop.call(this, obj)
+                                    }
+                                }
                             } catch (e: Throwable) {
                                 null
                             }
