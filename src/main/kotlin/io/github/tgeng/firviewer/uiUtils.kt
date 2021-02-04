@@ -33,11 +33,13 @@ fun label(
         bold: Boolean = false,
         italic: Boolean = false,
         multiline: Boolean = false,
-        icon: Icon? = null
+        icon: Icon? = null,
+        tooltipText: String? = null
 ) = JBLabel(
         if (multiline) ("<html>" + s.replace("\n", "<br/>").replace(" ", "&nbsp;") + "</html>") else s
 ).apply {
     this.icon = icon
+    this.toolTipText = toolTipText
     font = font.deriveFont((if (bold) Font.BOLD else Font.PLAIN) + if (italic) Font.ITALIC else Font.PLAIN)
 }
 
@@ -117,6 +119,13 @@ fun Any.traverseObjectProperty(propFilter: (KProperty<*>) -> Boolean = { true },
         // fallback to traverse with Java reflection
         this::class.java.methods
                 .filter { methodFilter(it) && it.name !in skipMethodNames && it.parameterCount == 0 && it.modifiers and Modifier.PUBLIC != 0 && it.returnType.simpleName != "void" }
+                .sortedWith { m1, m2 ->
+                    when {
+                        m1.declaringClass == m2.declaringClass -> 0
+                        m1.declaringClass.isAssignableFrom(m2.declaringClass) -> -1
+                        else -> 1
+                    }
+                }
                 .distinctBy { it.name }
                 .forEach { method ->
                     val value = try {

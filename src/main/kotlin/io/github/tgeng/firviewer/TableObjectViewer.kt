@@ -162,12 +162,6 @@ private class ObjectTableModel(
                         .mapNotNull { prop ->
                             try {
                                 val value = prop.call(this, obj)
-                                if (value == null ||
-                                        value is Collection<*> && value.isEmpty() ||
-                                        value is Map<*, *> && value.isEmpty()
-                                ) {
-                                    return@mapNotNull null
-                                }
                                 RowData(label(prop.name, icon = AllIcons.Nodes.Favorite), value?.getTypeAndId(), value)
                             } catch (e: Throwable) {
                                 null
