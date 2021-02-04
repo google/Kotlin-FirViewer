@@ -1,6 +1,7 @@
 package io.github.tgeng.firviewer
 
 import com.google.common.base.CaseFormat
+import com.google.common.primitives.Primitives
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.markup.EffectType
 import com.intellij.openapi.editor.markup.HighlighterLayer
@@ -14,6 +15,8 @@ import com.intellij.ui.scale.JBUIScale
 import org.jetbrains.kotlin.fir.FirPureAbstractElement
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.render
+import org.jetbrains.kotlin.fir.utils.AttributeArrayOwner
+import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.psiUtil.endOffset
 import org.jetbrains.kotlin.psi.psiUtil.startOffset
 import java.awt.Color
@@ -105,13 +108,14 @@ fun highlightInEditor(obj: Any, project: Project) {
 }
 
 val unitType = Unit::class.createType()
-val skipMethodNames = setOf("copy", "toString", "delete", "clone", "getUserDataString", "hashCode") + PsiElement::class.java.methods.map { it.name }
+val skipMethodNames = setOf("copy", "toString", "delete", "clone", "getUserDataString", "hashCode")
+val psiElementMethods = PsiElement::class.java.methods.map { it.name }.toSet()
 
 fun Any.traverseObjectProperty(propFilter: (KCallable<*>) -> Boolean = { true }, methodFilter: (Method) -> Boolean = { true },
                                fn: (name: String, value: Any?) -> Unit) {
     try {
         this::class.members
-                .filter { propFilter(it) && it.parameters.size == 1 && it.visibility == KVisibility.PUBLIC && it.returnType != unitType && it.name !in skipMethodNames }
+                .filter { propFilter(it) && it.parameters.size == 1 && it.visibility == KVisibility.PUBLIC && it.returnType != unitType && it.name !in skipMethodNames && (this !is PsiElement || it.name !in psiElementMethods) }
                 .sortedWith { m1, m2 ->
                     fun KCallable<*>.declaringClass() = when (this) {
                         is KFunction<*> -> javaMethod?.declaringClass
@@ -141,7 +145,7 @@ fun Any.traverseObjectProperty(propFilter: (KCallable<*>) -> Boolean = { true },
     } catch (e: Throwable) {
         // fallback to traverse with Java reflection
         this::class.java.methods
-                .filter { methodFilter(it) && it.name !in skipMethodNames && it.parameterCount == 0 && it.modifiers and Modifier.PUBLIC != 0 && it.returnType.simpleName != "void" }
+                .filter { methodFilter(it) && it.name !in skipMethodNames && it.parameterCount == 0 && it.modifiers and Modifier.PUBLIC != 0 && it.returnType.simpleName != "void" && (this !is PsiElement || it.name !in psiElementMethods) }
                 // methods in super class is at the beginning
                 .sortedWith { m1, m2 ->
                     when {
@@ -161,6 +165,30 @@ fun Any.traverseObjectProperty(propFilter: (KCallable<*>) -> Boolean = { true },
                 }
     }
 }
+
+fun Any.getTypeAndId(): String {
+    return when {
+        isData() -> this::class.simpleName
+                ?: this::class.toString()
+        else -> this::class.simpleName + " @" + Integer.toHexString(System.identityHashCode(this))
+    }
+}
+
+fun Any.getValueAndId(): String {
+    return when {
+        isData() -> this::class.simpleName
+                ?: this.toString()
+        else -> this::class.simpleName + " @" + Integer.toHexString(System.identityHashCode(this))
+    }
+}
+
+fun Any.isData() =
+        this is Iterable<*> || this is Map<*, *> || this is AttributeArrayOwner<*, *> ||
+                this is Enum<*> || this::class.objectInstance != null ||
+                this::class.java.isPrimitive || Primitives.isWrapperType(this::class.java) ||
+                this::class.java == String::class.java || this::class.java == Name::class.java ||
+                this::class.isData
+
 
 //private class CfgGraphViewer(state: TreeUiState, index: Int, graph: ControlFlowGraph) :
 //  ObjectViewer(state, index) {

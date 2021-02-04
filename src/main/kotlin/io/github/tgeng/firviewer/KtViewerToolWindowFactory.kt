@@ -19,6 +19,8 @@ import com.intellij.psi.PsiManager
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtVisitorVoid
+import java.awt.event.FocusAdapter
+import java.awt.event.FocusEvent
 
 class KtViewerToolWindowFactory : ToolWindowFactory {
 
@@ -43,6 +45,7 @@ class KtViewerToolWindowFactory : ToolWindowFactory {
     }
 
     private fun refresh(project: Project, toolWindow: ToolWindow) {
+        if (!toolWindow.isVisible) return
         val vf = FileEditorManager.getInstance(project).selectedFiles.firstOrNull() ?: return
         val ktFile = PsiManager.getInstance(project).findFile(vf) as? KtFile ?: return
         val treeUiState = cache.get(ktFile) {
@@ -59,7 +62,13 @@ class KtViewerToolWindowFactory : ToolWindowFactory {
                 }
             }
 
-            treeModel.setupTreeUi(project)
+            treeModel.setupTreeUi(project).apply {
+                pane.addFocusListener(object : FocusAdapter() {
+                    override fun focusGained(e: FocusEvent?) {
+                        refresh(project, toolWindow)
+                    }
+                })
+            }
         }
         treeUiState.refreshTree()
 

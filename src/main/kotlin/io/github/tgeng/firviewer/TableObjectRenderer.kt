@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.fir.resolve.dfa.cfg.render
 import org.jetbrains.kotlin.fir.utils.ArrayMap
 import org.jetbrains.kotlin.fir.utils.AttributeArrayOwner
 import org.jetbrains.kotlin.idea.frontend.api.HackToForceAllowRunningAnalyzeOnEDT
+import org.jetbrains.kotlin.idea.frontend.api.ValidityTokenOwner
 import org.jetbrains.kotlin.idea.frontend.api.hackyAllowRunningOnEdt
 import org.jetbrains.kotlin.idea.frontend.api.symbols.KtSymbol
 import org.jetbrains.kotlin.idea.frontend.api.types.KtType
@@ -35,6 +36,9 @@ object TableObjectRenderer : TableCellRenderer {
             row: Int,
             column: Int
     ): Component = hackyAllowRunningOnEdt {
+        if (value is ValidityTokenOwner && !value.token.isValid() || value is PsiElement && !value.isValid) {
+            return@hackyAllowRunningOnEdt label(value.getTypeAndId() + " is no longer valid", italic = true)
+        }
         when (value) {
             is JComponent -> value
             is Collection<*> -> label("size = " + value.size)

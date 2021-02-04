@@ -1,6 +1,5 @@
 package io.github.tgeng.firviewer
 
-import com.google.common.primitives.Primitives
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
@@ -11,12 +10,8 @@ import org.jetbrains.kotlin.fir.utils.TypeRegistry
 import org.jetbrains.kotlin.idea.frontend.api.*
 import org.jetbrains.kotlin.idea.frontend.api.symbols.KtSymbol
 import org.jetbrains.kotlin.idea.frontend.api.types.KtType
-import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtElement
-import java.awt.Color
-import java.awt.Component
-import java.awt.Cursor
-import java.awt.Dimension
+import java.awt.*
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.util.concurrent.ConcurrentHashMap
@@ -40,6 +35,7 @@ class TableObjectViewer(
         ObjectViewer(project, state, index, elementToAnalyze) {
     private val _model = ObjectTableModel(obj, state, elementToAnalyze)
     private val table = FittingTable(_model).apply {
+
         setDefaultRenderer(Any::class.java, TableObjectRenderer)
         rowSelectionAllowed = true
         setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
@@ -51,7 +47,25 @@ class TableObjectViewer(
         }
         val mouseListener = object : MouseAdapter() {
             override fun mouseMoved(e: MouseEvent) {
+                val point = e.point
+                updateToolTip(point)
+            }
+
+            override fun mouseReleased(e: MouseEvent) {
                 val row = rowAtPoint(e.point)
+                if (row == -1) return
+                if (row != selectedRow) {
+                    updateToolTip(e.point)
+                    return // Only do the triggering if the row is already selected.
+                }
+                val newValue = _model.rows[row].valueProvider?.invoke()
+                _model.rows[row].type = newValue?.getTypeAndId()
+                _model.rows[row].value = newValue
+                repaint()
+            }
+
+            private fun updateToolTip(point: Point) {
+                val row = rowAtPoint(point)
                 // Only do the triggering if the row is already selected.
                 if (row != -1 && row == selectedRow && _model.rows[row].valueProvider != null) {
                     cursor = Cursor(Cursor.HAND_CURSOR)
@@ -62,14 +76,8 @@ class TableObjectViewer(
                 }
             }
 
-            override fun mouseReleased(e: MouseEvent) {
-                val row = rowAtPoint(e.point)
-                if (row == -1) return
-                if (row != selectedRow) return // Only do the triggering if the row is already selected.
-                _model.rows[row].value = _model.rows[row].valueProvider?.invoke()
-                repaint()
-            }
         }
+
         addMouseMotionListener(mouseListener)
         addMouseListener(mouseListener)
     }
@@ -134,7 +142,7 @@ private class ObjectTableModel(
         private val elementToAnalyze: KtElement?
 ) :
         AbstractTableModel() {
-    class RowData(val name: JLabel, val type: String?, var value: Any?, val valueProvider: (() -> Any?)? = null)
+    class RowData(val name: JLabel, var type: String?, var value: Any?, val valueProvider: (() -> Any?)? = null)
 
     val rows: List<RowData> = when (obj) {
         is Iterable<*> -> obj.mapIndexed { index, value ->
@@ -203,29 +211,6 @@ private class ObjectTableModel(
             }
         }
     }
-
-    private fun Any.getTypeAndId(): String {
-        return when {
-            isData() -> this::class.simpleName
-                    ?: this::class.toString()
-            else -> this::class.simpleName + " @" + Integer.toHexString(System.identityHashCode(this))
-        }
-    }
-
-    private fun Any.getValueAndId(): String {
-        return when {
-            isData() -> this::class.simpleName
-                    ?: this.toString()
-            else -> this::class.simpleName + " @" + Integer.toHexString(System.identityHashCode(this))
-        }
-    }
-
-    private fun Any.isData() =
-            this is Iterable<*> || this is Map<*, *> || this is AttributeArrayOwner<*, *> ||
-                    this is Enum<*> || this::class.objectInstance != null ||
-                    this::class.java.isPrimitive || Primitives.isWrapperType(this::class.java) ||
-                    this::class.java == String::class.java || this::class.java == Name::class.java ||
-                    this::class.isData
 
     override fun getColumnName(column: Int): String = when (column) {
         0 -> when (obj) {

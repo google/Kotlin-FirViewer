@@ -23,6 +23,8 @@ import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
 import org.jetbrains.kotlin.idea.fir.low.level.api.api.getFirFile
 import org.jetbrains.kotlin.idea.fir.low.level.api.api.getResolveState
 import org.jetbrains.kotlin.psi.KtFile
+import java.awt.event.FocusAdapter
+import java.awt.event.FocusEvent
 
 class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
 
@@ -47,6 +49,7 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
     }
 
     private fun refresh(project: Project, toolWindow: ToolWindow) {
+        if (!toolWindow.isVisible) return
         val vf = FileEditorManager.getInstance(project).selectedFiles.firstOrNull() ?: return
         val ktFile = PsiManager.getInstance(project).findFile(vf) as? KtFile ?: return
         val treeUiState = cache.get(ktFile) {
@@ -61,7 +64,13 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
                 })
             }
 
-            treeModel.setupTreeUi(project)
+            treeModel.setupTreeUi(project).apply {
+                pane.addFocusListener(object : FocusAdapter() {
+                    override fun focusGained(e: FocusEvent?) {
+                        refresh(project, toolWindow)
+                    }
+                })
+            }
         }
         treeUiState.refreshTree()
 
