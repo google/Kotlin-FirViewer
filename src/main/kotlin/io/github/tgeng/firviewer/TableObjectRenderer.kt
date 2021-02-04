@@ -5,6 +5,7 @@ import com.intellij.openapi.module.impl.scopes.ModuleWithDependenciesScope
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.intellij.psi.stubs.StubElement
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.resolve.dfa.cfg.CFGNode
@@ -16,6 +17,7 @@ import org.jetbrains.kotlin.idea.frontend.api.hackyAllowRunningOnEdt
 import org.jetbrains.kotlin.idea.frontend.api.symbols.KtSymbol
 import org.jetbrains.kotlin.idea.frontend.api.types.KtType
 import org.jetbrains.kotlin.psi.KtDeclaration
+import org.jetbrains.kotlin.psi.stubs.KotlinClassStub
 import java.awt.Component
 import javax.swing.JComponent
 import javax.swing.JTable
@@ -39,13 +41,13 @@ object TableObjectRenderer : TableCellRenderer {
             is Map<*, *> -> label("size =" + value.size)
             is CFGNode<*> -> label(value.render())
             is ItemPresentation -> label(value.presentableText ?: "")
-            is ModuleWithDependenciesScope -> label(value.toString().replace(' ', '\n'), multiline = true)
+            is StubElement<*>, is ModuleWithDependenciesScope -> label(value.toString().replace(' ', '\n'), multiline = true)
             is Project -> label("Project: " + value.name)
             is PsiFile -> label(value.name)
             is KtDeclaration -> label(value.text.takeWhile { it != '\n' })
             is PsiElement -> label(value.text, multiline = true)
             is KtType -> label(value.asStringForDebugging())
-            is KtSymbol -> label(value.psi?.text ?: "")
+            is KtSymbol -> label(value.psi?.text ?: "", multiline = true)
             is FirElement -> label(value.render(), multiline = true)
             is AttributeArrayOwner<*, *> -> {
                 val arrayMap =

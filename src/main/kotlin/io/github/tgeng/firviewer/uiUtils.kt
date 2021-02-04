@@ -105,7 +105,7 @@ fun highlightInEditor(obj: Any, project: Project) {
 }
 
 val unitType = Unit::class.createType()
-val skipMethodNames = setOf("copy", "toString", "delete", "clone", "getUserDataString")
+val skipMethodNames = setOf("copy", "toString", "delete", "clone", "getUserDataString", "hashCode") + PsiElement::class.java.methods.map { it.name }
 
 fun Any.traverseObjectProperty(propFilter: (KCallable<*>) -> Boolean = { true }, methodFilter: (Method) -> Boolean = { true },
                                fn: (name: String, value: Any?) -> Unit) {
