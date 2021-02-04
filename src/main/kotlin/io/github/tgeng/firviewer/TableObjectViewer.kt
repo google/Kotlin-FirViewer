@@ -51,14 +51,15 @@ class TableObjectViewer(
                 updateToolTip(point)
             }
 
-            override fun mouseReleased(e: MouseEvent) {
+            override fun mousePressed(e: MouseEvent) {
                 val row = rowAtPoint(e.point)
                 if (row == -1) return
                 if (row != selectedRow) {
                     updateToolTip(e.point)
                     return // Only do the triggering if the row is already selected.
                 }
-                val newValue = _model.rows[row].valueProvider?.invoke()
+                val valueProvider = _model.rows[row].valueProvider ?: return
+                val newValue = valueProvider.invoke()
                 _model.rows[row].type = newValue?.getTypeAndId()
                 _model.rows[row].value = newValue
                 repaint()
