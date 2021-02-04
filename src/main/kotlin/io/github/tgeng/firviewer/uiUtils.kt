@@ -1,5 +1,6 @@
 package io.github.tgeng.firviewer
 
+import com.google.common.base.CaseFormat
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.markup.EffectType
 import com.intellij.openapi.editor.markup.HighlighterLayer
@@ -23,10 +24,14 @@ import java.lang.reflect.Modifier
 import javax.swing.Icon
 import javax.swing.JComponent
 import javax.swing.JPanel
+import kotlin.reflect.KCallable
+import kotlin.reflect.KFunction
 import kotlin.reflect.KProperty
 import kotlin.reflect.KVisibility
 import kotlin.reflect.full.createType
-import kotlin.reflect.full.memberProperties
+import kotlin.reflect.jvm.isAccessible
+import kotlin.reflect.jvm.javaGetter
+import kotlin.reflect.jvm.javaMethod
 
 fun label(
         s: String,
@@ -102,13 +107,31 @@ fun highlightInEditor(obj: Any, project: Project) {
 val unitType = Unit::class.createType()
 val skipMethodNames = setOf("copy", "toString", "delete", "clone", "getUserDataString")
 
-fun Any.traverseObjectProperty(propFilter: (KProperty<*>) -> Boolean = { true }, methodFilter: (Method) -> Boolean = { true },
+fun Any.traverseObjectProperty(propFilter: (KCallable<*>) -> Boolean = { true }, methodFilter: (Method) -> Boolean = { true },
                                fn: (name: String, value: Any?) -> Unit) {
     try {
-        this::class.memberProperties
-                .filter { propFilter(it) && it.parameters.size == 1 && it.visibility == KVisibility.PUBLIC && it.returnType != unitType }
+        this::class.members
+                .filter { propFilter(it) && it.parameters.size == 1 && it.visibility == KVisibility.PUBLIC && it.returnType != unitType && it.name !in skipMethodNames }
+                .sortedWith { m1, m2 ->
+                    fun KCallable<*>.declaringClass() = when (this) {
+                        is KFunction<*> -> javaMethod?.declaringClass
+                        is KProperty<*> -> javaGetter?.declaringClass
+                        else -> null
+                    }
+
+                    val m1Class = m1.declaringClass()
+                    val m2Class = m2.declaringClass()
+                    when {
+                        m1Class == m2Class -> 0
+                        m1Class == null -> 1
+                        m2Class == null -> -1
+                        m1Class.isAssignableFrom(m2Class) -> -1
+                        else -> 1
+                    }
+                }
                 .forEach { prop ->
                     val value = try {
+                        prop.isAccessible = true
                         prop.call(this)
                     } catch (e: Throwable) {
                         return@forEach
@@ -119,6 +142,7 @@ fun Any.traverseObjectProperty(propFilter: (KProperty<*>) -> Boolean = { true },
         // fallback to traverse with Java reflection
         this::class.java.methods
                 .filter { methodFilter(it) && it.name !in skipMethodNames && it.parameterCount == 0 && it.modifiers and Modifier.PUBLIC != 0 && it.returnType.simpleName != "void" }
+                // methods in super class is at the beginning
                 .sortedWith { m1, m2 ->
                     when {
                         m1.declaringClass == m2.declaringClass -> 0
@@ -133,7 +157,7 @@ fun Any.traverseObjectProperty(propFilter: (KProperty<*>) -> Boolean = { true },
                     } catch (e: Throwable) {
                         return@forEach
                     }
-                    fn(method.name, value)
+                    fn(CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_CAMEL, method.name.removePrefix("get")), value)
                 }
     }
 }

@@ -137,16 +137,19 @@ private class ObjectTableModel(
         }
     }
 
+    @OptIn(HackToForceAllowRunningAnalyzeOnEDT::class)
     private fun getObjectPropertyMembersBasedRows() = try {
         val result = mutableListOf<RowData>()
-        obj.traverseObjectProperty { name, value ->
-            if (value == null ||
-                    value is Collection<*> && value.isEmpty() ||
-                    value is Map<*, *> && value.isEmpty()
-            ) {
-                return@traverseObjectProperty
+        hackyAllowRunningOnEdt {
+            obj.traverseObjectProperty { name, value ->
+                if (value == null ||
+                        value is Collection<*> && value.isEmpty() ||
+                        value is Map<*, *> && value.isEmpty()
+                ) {
+                    return@traverseObjectProperty
+                }
+                result += RowData(label(name), value?.getTypeAndId(), value)
             }
-            result += RowData(label(name), value?.getTypeAndId(), value)
         }
         result
     } catch (e: Throwable) {
