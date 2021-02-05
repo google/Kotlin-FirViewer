@@ -15,7 +15,9 @@ Note: This plugin **only** works with Kotlin plugin in FIR mode (Set `idea.fir.p
 
 ## How to use?
 
-The viewer can now be found under `View -> Tool Windows -> FirViewer`. You may need to refresh the view a couple of times in order to get the final updated FIR structures.
+The plugin provides two tool windows
+* FirViewer (View -> Tool Windows -> FirViewer): shows FIR structures for the current opened file
+* KtViewer (View -> Tool Windows -> KtViewer): shows the Kotlin PSI structures for the current opened file plus some information exposed by the new idea-frontend-api (those carries star icons)
 
 ## Build Instruction
 
