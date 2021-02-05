@@ -160,6 +160,33 @@ private class ObjectTableModel(
     class RowData(val name: JLabel, var type: String?, var value: Any?, val valueProvider: (() -> Any?)? = null)
 
     val rows: List<RowData> = when (obj) {
+        is Array<*> -> obj.mapIndexed { index, value ->
+            RowData(label(index.toString()), value?.getTypeAndId(), value)
+        }
+        is BooleanArray -> obj.mapIndexed { index, value ->
+            RowData(label(index.toString()), value?.getTypeAndId(), value)
+        }
+        is ByteArray -> obj.mapIndexed { index, value ->
+            RowData(label(index.toString()), value?.getTypeAndId(), value)
+        }
+        is ShortArray -> obj.mapIndexed { index, value ->
+            RowData(label(index.toString()), value?.getTypeAndId(), value)
+        }
+        is IntArray -> obj.mapIndexed { index, value ->
+            RowData(label(index.toString()), value?.getTypeAndId(), value)
+        }
+        is LongArray -> obj.mapIndexed { index, value ->
+            RowData(label(index.toString()), value?.getTypeAndId(), value)
+        }
+        is FloatArray -> obj.mapIndexed { index, value ->
+            RowData(label(index.toString()), value?.getTypeAndId(), value)
+        }
+        is DoubleArray -> obj.mapIndexed { index, value ->
+            RowData(label(index.toString()), value?.getTypeAndId(), value)
+        }
+        is CharArray -> obj.mapIndexed { index, value ->
+            RowData(label(index.toString()), value?.getTypeAndId(), value)
+        }
         is Iterable<*> -> obj.mapIndexed { index, value ->
             RowData(label(index.toString()), value?.getTypeAndId(), value)
         }
