@@ -104,7 +104,7 @@ operator fun JComponent.plus(that: JComponent): JPanel {
 fun highlightInEditor(obj: Any, project: Project) {
     val (startOffset, endOffset) = when (obj) {
         is FirPureAbstractElement -> obj.source?.let { it.startOffset to it.endOffset }
-        is PsiElement -> obj.startOffset to obj.endOffset
+        is PsiElement -> obj.textRange?.let { it.startOffset to it.endOffset }
         else -> null
     } ?: return
     val editorManager = FileEditorManager.getInstance(project) ?: return
@@ -196,12 +196,14 @@ fun Any.getValueAndId(): String {
     }
 }
 
-fun Any.isData() =
-        this is Iterable<*> || this is Map<*, *> || this is AttributeArrayOwner<*, *> ||
-                this is Enum<*> || this::class.objectInstance != null ||
-                this::class.java.isPrimitive || Primitives.isWrapperType(this::class.java) ||
-                this::class.java == String::class.java || this::class.java == Name::class.java ||
-                this::class.isData
+fun Any.isData(): Boolean = try {
+    this is Iterable<*> || this is Map<*, *> || this is AttributeArrayOwner<*, *> ||
+            this is Enum<*> || this::class.java.isPrimitive || Primitives.isWrapperType(this::class.java) ||
+            this::class.java == String::class.java || this::class.java == Name::class.java ||
+            this::class.isData || this::class.objectInstance != null
+} catch (e: Throwable) {
+    false
+}
 
 
 //private class CfgGraphViewer(state: TreeUiState, index: Int, graph: ControlFlowGraph) :

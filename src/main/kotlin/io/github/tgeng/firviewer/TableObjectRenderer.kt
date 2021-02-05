@@ -19,6 +19,8 @@ import com.intellij.openapi.module.impl.scopes.ModuleWithDependenciesScope
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.intellij.psi.SingleRootFileViewProvider
+import com.intellij.psi.stubs.ObjectStubTree
 import com.intellij.psi.stubs.StubElement
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.render
@@ -68,7 +70,8 @@ object TableObjectRenderer : TableCellRenderer {
             is FloatArray -> label("size = " + value.size)
             is CFGNode<*> -> label(value.render())
             is ItemPresentation -> label(value.presentableText ?: "")
-            is StubElement<*>, is ModuleWithDependenciesScope -> label(value.toString().replace(' ', '\n'), multiline = true)
+            is SingleRootFileViewProvider -> label(value.virtualFile.toString())
+            is ObjectStubTree<*>, is StubElement<*>, is ModuleWithDependenciesScope -> label(value.toString().replace(' ', '\n'), multiline = true)
             is Project -> label("Project: " + value.name)
             is PsiFile -> label(value.name)
             is KtDeclaration -> label(value.text.takeWhile { it != '\n' })

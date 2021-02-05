@@ -190,11 +190,11 @@ private class ObjectTableModel(
         is Iterable<*> -> obj.mapIndexed { index, value ->
             RowData(label(index.toString()), value?.getTypeAndId(), value)
         }
-        is Map<*, *> -> obj.map { (k, v) -> RowData(label(k?.getValueAndId() ?: ""), v?.getTypeAndId(), v) }
-        is AttributeArrayOwner<*, *> -> getAttributesBasedRows()
-        is PsiElement, is KtType, is KtSymbol -> getKtAnalysisSessionBasedRows() + getObjectPropertyMembersBasedRows()
-        else -> getObjectPropertyMembersBasedRows()
-    }.sortedBy { it.name.text }
+        is Map<*, *> -> obj.map { (k, v) -> RowData(label(k?.getValueAndId() ?: ""), v?.getTypeAndId(), v) }.sortedBy { it.name.text }
+        is AttributeArrayOwner<*, *> -> getAttributesBasedRows().sortedBy { it.name.text }
+        is PsiElement, is KtType, is KtSymbol -> (getKtAnalysisSessionBasedRows() + getObjectPropertyMembersBasedRows()).sortedBy { it.name.text }
+        else -> getObjectPropertyMembersBasedRows().sortedBy { it.name.text }
+    }
 
     private fun getAttributesBasedRows(): List<RowData> {
         val arrayMap =
@@ -229,7 +229,7 @@ private class ObjectTableModel(
         }
         result
     } catch (e: Throwable) {
-        listOf(RowData(label(""), e?.getTypeAndId(), e))
+        listOf(RowData(label("<error>"), e?.getTypeAndId(), e))
     }
 
     @OptIn(HackToForceAllowRunningAnalyzeOnEDT::class)
