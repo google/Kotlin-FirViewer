@@ -64,7 +64,7 @@ class ObjectTreeModel<T : Any>(
     private fun TreeNode<T>.refresh(path: List<TreeNode<T>>) {
         val newChildren = mutableListOf<TreeNode<T>>()
         val childNameAndValues = mutableListOf<Pair<Any?, String>>()
-        t.traverseObjectProperty { name, value ->
+        t.traverseObjectProperty { name, value, _ ->
             when {
                 tClass.isInstance(value) -> childNameAndValues += (value to name)
                 value is Collection<*> -> value.filter { tClass.isInstance(it) }

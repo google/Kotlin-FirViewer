@@ -30,6 +30,8 @@ import org.jetbrains.kotlin.fir.FirPureAbstractElement
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.utils.AttributeArrayOwner
+import org.jetbrains.kotlin.idea.frontend.api.HackToForceAllowRunningAnalyzeOnEDT
+import org.jetbrains.kotlin.idea.frontend.api.hackyAllowRunningOnEdt
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.psiUtil.endOffset
 import org.jetbrains.kotlin.psi.psiUtil.startOffset
@@ -122,11 +124,12 @@ fun highlightInEditor(obj: Any, project: Project) {
 }
 
 val unitType = Unit::class.createType()
-val skipMethodNames = setOf("copy", "toString", "delete", "clone", "getUserDataString", "hashCode", "getClass")
+val skipMethodNames = setOf("copy", "toString", "delete", "clone", "getUserDataString", "hashCode", "getClass", "component1", "component2", "component3", "component4", "component5")
 val psiElementMethods = PsiElement::class.java.methods.map { it.name }.toSet()
 
+@OptIn(HackToForceAllowRunningAnalyzeOnEDT::class)
 fun Any.traverseObjectProperty(propFilter: (KCallable<*>) -> Boolean = { true }, methodFilter: (Method) -> Boolean = { true },
-                               fn: (name: String, value: Any?) -> Unit) {
+                               fn: (name: String, value: Any?, () -> Any?) -> Unit) {
     try {
         this::class.members
                 .filter { propFilter(it) && it.parameters.size == 1 && it.visibility == KVisibility.PUBLIC && it.returnType != unitType && it.name !in skipMethodNames && (this !is PsiElement || it.name !in psiElementMethods) }
@@ -150,11 +153,17 @@ fun Any.traverseObjectProperty(propFilter: (KCallable<*>) -> Boolean = { true },
                 .forEach { prop ->
                     val value = try {
                         prop.isAccessible = true
-                        prop.call(this)
+                        hackyAllowRunningOnEdt {
+                            prop.call(this)
+                        }
                     } catch (e: Throwable) {
                         return@forEach
                     }
-                    fn(prop.name, value)
+                    fn(prop.name, value) {
+                        hackyAllowRunningOnEdt {
+                            prop.call(this)
+                        }
+                    }
                 }
     } catch (e: Throwable) {
         // fallback to traverse with Java reflection
@@ -171,11 +180,17 @@ fun Any.traverseObjectProperty(propFilter: (KCallable<*>) -> Boolean = { true },
                 .distinctBy { it.name }
                 .forEach { method ->
                     val value = try {
-                        method.invoke(this)
+                        hackyAllowRunningOnEdt {
+                            method.invoke(this)
+                        }
                     } catch (e: Throwable) {
                         return@forEach
                     }
-                    fn(CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_CAMEL, method.name.removePrefix("get")), value)
+                    fn(CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_CAMEL, method.name.removePrefix("get")), value) {
+                        hackyAllowRunningOnEdt {
+                            method.invoke(this)
+                        }
+                    }
                 }
     }
 }

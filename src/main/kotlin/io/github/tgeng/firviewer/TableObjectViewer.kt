@@ -18,9 +18,13 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.ui.table.JBTable
+import org.jetbrains.kotlin.fir.FirElement
+import org.jetbrains.kotlin.fir.utils.AbstractArrayMapOwner
 import org.jetbrains.kotlin.fir.utils.ArrayMap
-import org.jetbrains.kotlin.fir.utils.AttributeArrayOwner
 import org.jetbrains.kotlin.fir.utils.TypeRegistry
+import org.jetbrains.kotlin.idea.caches.project.IdeaModuleInfo
+import org.jetbrains.kotlin.idea.caches.project.getModuleInfos
+import org.jetbrains.kotlin.idea.fir.low.level.api.api.getResolveState
 import org.jetbrains.kotlin.idea.frontend.api.*
 import org.jetbrains.kotlin.idea.frontend.api.symbols.KtSymbol
 import org.jetbrains.kotlin.idea.frontend.api.types.KtType
@@ -33,6 +37,7 @@ import javax.swing.*
 import javax.swing.table.AbstractTableModel
 import javax.swing.table.TableCellRenderer
 import javax.swing.table.TableModel
+import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
 import kotlin.reflect.KVisibility
 import kotlin.reflect.full.memberProperties
@@ -159,6 +164,7 @@ private class ObjectTableModel(
         AbstractTableModel() {
     class RowData(val name: JLabel, var type: String?, var value: Any?, val valueProvider: (() -> Any?)? = null)
 
+    @OptIn(HackToForceAllowRunningAnalyzeOnEDT::class)
     val rows: List<RowData> = when (obj) {
         is Array<*> -> obj.mapIndexed { index, value ->
             RowData(label(index.toString()), value?.getTypeAndId(), value)
@@ -190,13 +196,20 @@ private class ObjectTableModel(
         is Iterable<*> -> obj.mapIndexed { index, value ->
             RowData(label(index.toString()), value?.getTypeAndId(), value)
         }
-        is Map<*, *> -> obj.map { (k, v) -> RowData(label(k?.getValueAndId() ?: ""), v?.getTypeAndId(), v) }.sortedBy { it.name.text }
-        is AttributeArrayOwner<*, *> -> getAttributesBasedRows().sortedBy { it.name.text }
-        is PsiElement, is KtType, is KtSymbol -> (getKtAnalysisSessionBasedRows() + getObjectPropertyMembersBasedRows()).sortedBy { it.name.text }
+        is Sequence<*> -> hackyAllowRunningOnEdt {
+            obj.mapIndexed { index, value ->
+                RowData(label(index.toString()), value?.getTypeAndId(), value)
+            }.toList()
+        }
+        is Map<*, *> -> obj.map { (k, v) ->
+            RowData(label(k?.getValueAndId() ?: ""), v?.getTypeAndId(), v)
+        }.sortedBy { it.name.text }
+        is AbstractArrayMapOwner<*, *> -> getArrayMapOwnerBasedRows().sortedBy { it.name.text }
+        is PsiElement, is KtType, is KtSymbol -> (getKtAnalysisSessionBasedRows() + getObjectPropertyMembersBasedRows() + getOtherExtensionProperties()).sortedBy { it.name.text }
         else -> getObjectPropertyMembersBasedRows().sortedBy { it.name.text }
     }
 
-    private fun getAttributesBasedRows(): List<RowData> {
+    private fun getArrayMapOwnerBasedRows(): List<RowData> {
         val arrayMap =
                 obj::class.memberProperties.first { it.name == "arrayMap" }.apply { isAccessible = true }
                         .call(obj) as ArrayMap<*>
@@ -216,16 +229,14 @@ private class ObjectTableModel(
     @OptIn(HackToForceAllowRunningAnalyzeOnEDT::class)
     private fun getObjectPropertyMembersBasedRows() = try {
         val result = mutableListOf<RowData>()
-        hackyAllowRunningOnEdt {
-            obj.traverseObjectProperty { name, value ->
-                if (value == null ||
-                        value is Collection<*> && value.isEmpty() ||
-                        value is Map<*, *> && value.isEmpty()
-                ) {
-                    return@traverseObjectProperty
-                }
-                result += RowData(label(name), value?.getTypeAndId(), value)
+        obj.traverseObjectProperty { name, value, valueProvider ->
+            if (value == null ||
+                    value is Collection<*> && value.isEmpty() ||
+                    value is Map<*, *> && value.isEmpty()
+            ) {
+                return@traverseObjectProperty
             }
+            result += RowData(label(name), value?.getTypeAndId(), value, valueProvider)
         }
         result
     } catch (e: Throwable) {
@@ -252,6 +263,44 @@ private class ObjectTableModel(
                         }
             }
         }
+    }
+
+    @OptIn(HackToForceAllowRunningAnalyzeOnEDT::class)
+    private fun getOtherExtensionProperties(): List<RowData> {
+        val result = mutableListOf<RowData>()
+        when (obj) {
+            is KtElement -> {
+                fun getValue() = try {
+                    hackyAllowRunningOnEdt {
+                        analyzeWithReadAction(obj.containingKtFile) {
+                            obj.containingKtFile.getScopeContextForPosition(obj)
+                        }
+                    }
+                } catch (e: Throwable) {
+                    e
+                }
+
+                val value = getValue()
+                result += RowData(label("scopeAtPosition"), value.getTypeAndId(), value, ::getValue)
+                result += obj::getModuleInfos.toRowData()
+                result += obj::getResolveState.toRowData()
+            }
+            is IdeaModuleInfo -> {
+                obj::getResolveState.toRowData()
+            }
+        }
+        return result.onEach { it.name.icon = AllIcons.Nodes.Favorite }
+    }
+
+    fun KCallable<*>.toRowData(): RowData {
+        fun getValue() = try {
+            this.call()
+        } catch (e: Throwable) {
+            e
+        }
+
+        val value = getValue()
+        return RowData(label(name), value?.getTypeAndId(), value, ::getValue)
     }
 
     override fun getColumnName(column: Int): String = when (column) {
