@@ -55,6 +55,14 @@ class KtViewerToolWindowFactory : ToolWindowFactory {
             }
         }))
 
+        refresh(project, toolWindow)
+        project.messageBus.connect()
+            .subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
+                override fun fileOpened(source: FileEditorManager, file: VirtualFile) {
+                    refresh(project, toolWindow)
+                }
+            })
+
         project.messageBus.connect().subscribe(EVENT_TOPIC, Runnable { refresh(project, toolWindow) })
     }
 

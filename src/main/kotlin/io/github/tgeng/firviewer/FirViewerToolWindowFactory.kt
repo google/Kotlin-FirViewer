@@ -15,15 +15,11 @@
 package io.github.tgeng.firviewer
 
 import com.google.common.cache.CacheBuilder
-import com.intellij.AppTopics
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.editor.Document
-import com.intellij.openapi.editor.event.DocumentEvent
-import com.intellij.openapi.editor.event.DocumentListener
-import com.intellij.openapi.fileEditor.*
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.FileEditorManagerListener
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
@@ -59,6 +55,14 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
             }
         }))
 
+        refresh(project, toolWindow)
+        project.messageBus.connect()
+            .subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
+                override fun fileOpened(source: FileEditorManager, file: VirtualFile) {
+                    refresh(project, toolWindow)
+                }
+            })
+
         project.messageBus.connect().subscribe(EVENT_TOPIC, Runnable { refresh(project, toolWindow) })
     }
 
@@ -68,9 +72,9 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
         val ktFile = PsiManager.getInstance(project).findFile(vf) as? KtFile ?: return
         val treeUiState = cache.get(ktFile) {
             val treeModel = ObjectTreeModel(
-                    ktFile,
-                    FirPureAbstractElement::class,
-                    { it.getFirFile(it.getResolveState()) }) { consumer ->
+                ktFile,
+                FirPureAbstractElement::class,
+                { it.getFirFile(it.getResolveState()) }) { consumer ->
                 acceptChildren(object : FirVisitorVoid() {
                     override fun visitElement(element: FirElement) {
                         if (element is FirPureAbstractElement) consumer(element)
@@ -91,11 +95,11 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
         if (toolWindow.contentManager.contents.firstOrNull() != treeUiState.pane) {
             toolWindow.contentManager.removeAllContents(true)
             toolWindow.contentManager.addContent(
-                    toolWindow.contentManager.factory.createContent(
-                            treeUiState.pane,
-                            "Current File",
-                            true
-                    )
+                toolWindow.contentManager.factory.createContent(
+                    treeUiState.pane,
+                    "Current File",
+                    true
+                )
             )
         }
     }

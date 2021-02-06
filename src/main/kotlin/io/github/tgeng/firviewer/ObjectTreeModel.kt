@@ -31,10 +31,10 @@ import javax.swing.tree.TreePath
 import kotlin.reflect.KClass
 
 class ObjectTreeModel<T : Any>(
-        private val ktFile: KtFile,
-        private val tClass: KClass<T>,
-        val ktFileToT: (KtFile) -> T,
-        val acceptChildren: T.((T) -> Unit) -> Unit
+    private val ktFile: KtFile,
+    private val tClass: KClass<T>,
+    val ktFileToT: (KtFile) -> T,
+    val acceptChildren: T.((T) -> Unit) -> Unit
 ) : BaseTreeModel<TreeNode<T>>() {
     private var root: TreeNode<T>? = null
 
@@ -68,7 +68,7 @@ class ObjectTreeModel<T : Any>(
             when {
                 tClass.isInstance(value) -> childNameAndValues += (value to name)
                 value is Collection<*> -> value.filter { tClass.isInstance(it) }
-                        .forEachIndexed { index, value -> childNameAndValues += value to "$name[$index]" }
+                    .forEachIndexed { index, value -> childNameAndValues += value to "$name[$index]" }
                 else -> {
                 }
             }
@@ -77,8 +77,8 @@ class ObjectTreeModel<T : Any>(
         val fieldCounter = AtomicInteger()
         t.acceptChildren { element ->
             newChildren += TreeNode(
-                    childMap[element] ?: "<prop${fieldCounter.getAndIncrement()}>",
-                    element
+                childMap[element] ?: "<prop${fieldCounter.getAndIncrement()}>",
+                element
             )
         }
         currentChildren = newChildren
@@ -98,25 +98,26 @@ class ObjectTreeModel<T : Any>(
         }
         jbSplitter.secondComponent = JBScrollPane(tablePane)
         val state = TreeUiState(
-                jbSplitter,
-                tree,
-                this,
-                ObjectViewerUiState(tablePane)
+            jbSplitter,
+            tree,
+            this,
+            ObjectViewerUiState(tablePane)
         )
 
         tree.addTreeSelectionListener { e ->
             if (e.newLeadSelectionPath != null) state.selectedTreePath =
-                    e.newLeadSelectionPath.getNamePath()
+                e.newLeadSelectionPath.getNamePath()
             val node = tree.lastSelectedPathComponent as? TreeNode<*> ?: return@addTreeSelectionListener
             tablePane.removeAll()
             state.objectViewerState.objectViewers.clear()
             state.objectViewerState.selectedTablePath.clear()
             val objectViewer = ObjectViewer.createObjectViewer(
-                    project,
-                    node.t,
-                    state.objectViewerState,
-                    0,
-                    node.t as? KtElement
+                project,
+                node.t,
+                state.objectViewerState,
+                0,
+                ktFile,
+                node.t as? KtElement
             )
             state.objectViewerState.objectViewers.add(objectViewer)
             tablePane.add(objectViewer.view)

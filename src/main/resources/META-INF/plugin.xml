@@ -27,8 +27,9 @@
     <depends>org.jetbrains.kotlin</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow id="FirViewer" anchor="right" factoryClass="io.github.tgeng.firviewer.FirViewerToolWindowFactory"/>
-        <toolWindow id="KtViewer" anchor="right" factoryClass="io.github.tgeng.firviewer.KtViewerToolWindowFactory"/>
+        <toolWindow id="FIR Viewer" anchor="right" factoryClass="io.github.tgeng.firviewer.FirViewerToolWindowFactory"/>
+        <toolWindow id="KT Viewer" anchor="right" factoryClass="io.github.tgeng.firviewer.KtViewerToolWindowFactory"/>
+        <toolWindow id="CFG Viewer" anchor="right" factoryClass="io.github.tgeng.firviewer.CfgViewToolWindowFactory"/>
 
         <localInspection implementationClass="io.github.tgeng.firviewer.NotificationInspection"
                          shortName="FirViewerInspection"
