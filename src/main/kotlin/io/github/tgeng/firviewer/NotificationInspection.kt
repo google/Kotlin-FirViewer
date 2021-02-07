@@ -20,7 +20,6 @@ import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.psi.PsiFile
 import com.intellij.util.messages.Topic
-import org.jetbrains.kotlin.idea.highlighter.AbstractHighlightingPassBase
 
 val EVENT_TOPIC = Topic.create("FIR_VIEWER_UPDATE_TOPIC", Runnable::class.java)
 

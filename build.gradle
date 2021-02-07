@@ -5,7 +5,7 @@ plugins {
 }
 
 group 'org.example'
-version '1.2.2'
+version '1.2.3'
 
 repositories {
     mavenCentral()
@@ -33,4 +33,9 @@ patchPluginXml {
 }
 test {
     useJUnitPlatform()
+}
+compileKotlin {
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
 }

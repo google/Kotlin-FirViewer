@@ -2,15 +2,14 @@ package io.github.tgeng.firviewer
 
 import com.google.common.collect.ImmutableMap
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.util.SystemInfo
 import com.intellij.ui.JBColor
 import com.kitfox.svg.SVGDiagram
 import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.RenderingHints
 import java.awt.RenderingHints.KEY_INTERPOLATION
-import java.awt.event.MouseAdapter
-import java.awt.event.MouseEvent
-import java.awt.event.MouseMotionAdapter
+import java.awt.event.*
 import java.awt.geom.AffineTransform
 import java.awt.geom.Point2D
 import javax.swing.JPanel
@@ -21,7 +20,6 @@ class SvgView : JPanel() {
 
     private var _svg: SVGDiagram? = null
     private val transform: AffineTransform = AffineTransform()
-    private val baseTransform = AffineTransform()
 
     init {
         var startX = 0
@@ -38,8 +36,8 @@ class SvgView : JPanel() {
             override fun mouseDragged(e: MouseEvent) {
                 transform.setTransform(startTransform)
                 transform.translate(
-                    (e.x.toDouble() - startX) / (transform.scaleX * baseTransform.scaleX),
-                    (e.y.toDouble() - startY) / (transform.scaleY * baseTransform.scaleY)
+                    (e.x.toDouble() - startX) / transform.scaleX,
+                    (e.y.toDouble() - startY) / transform.scaleY
                 )
                 repaint()
             }
@@ -47,42 +45,70 @@ class SvgView : JPanel() {
         addMouseWheelListener { e ->
             val scale = 2.0.pow(-e.preciseWheelRotation * 0.2)
             val mouseP = Point2D.Double(e.x.toDouble(), e.y.toDouble())
-            transform.preConcatenate(baseTransform)
             transform.scaleAt(mouseP, scale)
-            transform.preConcatenate(baseTransform.createInverse())
             repaint()
         }
+        val size = size
+        var prevWidth = size.width
+        var prevHeight = size.height
+        addComponentListener(object : ComponentAdapter() {
+            override fun componentResized(componentEvent: ComponentEvent) {
+                val newSize = this@SvgView.size
+                transform.translate(
+                    (newSize.width - prevWidth) / transform.scaleX / 2,
+                    (newSize.height - prevHeight) / transform.scaleY / 2
+                )
+                prevWidth = newSize.width
+                prevHeight = newSize.height
+            }
+        })
     }
 
     fun setSvg(svg: SVGDiagram) {
         ApplicationManager.getApplication().invokeLater {
+            val oldSvg = _svg
+            if (oldSvg == null) {
+                resetTransform(svg)
+            } else {
+                transform.translate((oldSvg.width - svg.width) / 2.0, (oldSvg.height - svg.height) / 2.0)
+            }
             _svg = svg
             repaint()
         }
     }
 
     fun reset() {
+        val svg = _svg ?: return
         ApplicationManager.getApplication().invokeLater {
-            transform.setToIdentity()
+            resetTransform(svg)
             repaint()
         }
     }
 
+    private fun resetTransform(svg: SVGDiagram) {
+        val scale = if (SystemInfo.isMac) {
+            // The SVG library seems to have a bug on Mac where the width and height is doubled.
+            0.25
+        } else {
+            0.5
+        }
+        transform.setTransform(
+            scale,
+            0.0,
+            0.0,
+            scale,
+            (size.width - svg.width * scale) / 2,
+            (size.height - svg.height * scale) / 2
+        )
+    }
+
     override fun paintComponent(g: Graphics) {
         val svg = this._svg
-        val width = size.width
-        val height = size.height
         g.color = JBColor.PanelBackground
-        g.fillRect(0, 0, width, height)
+        g.fillRect(0, 0, size.width, size.height)
         if (g !is Graphics2D || svg == null) {
             return
         }
-        baseTransform.setToIdentity()
-        val x = (width - svg.width) / 2.0
-        val y = (height - svg.height) / 2.0
-        baseTransform.translate(x, y)
-        baseTransform.scaleAt(Point2D.Double(width / 2.0, height / 2.0), 0.5)
-        g.transform(baseTransform)
         g.transform(this.transform)
         g.setRenderingHints(renderHints)
         svg.render(g)
