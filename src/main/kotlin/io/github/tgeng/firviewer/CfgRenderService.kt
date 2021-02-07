@@ -9,6 +9,8 @@ import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
 import com.intellij.ui.JBColor
+import com.kitfox.svg.SVGDiagram
+import com.kitfox.svg.SVGUniverse
 import org.jetbrains.kotlin.fir.resolve.dfa.cfg.CFGNode
 import org.jetbrains.kotlin.fir.resolve.dfa.cfg.FirControlFlowGraphRenderVisitor
 import org.jetbrains.kotlin.fir.resolve.dfa.cfg.render
@@ -17,20 +19,20 @@ import org.jetbrains.kotlin.idea.fir.low.level.api.api.getFirFile
 import org.jetbrains.kotlin.idea.fir.low.level.api.api.getResolveState
 import org.jetbrains.kotlin.psi.KtFile
 import java.awt.Color
-import java.awt.image.BufferedImage
 import java.io.File
+import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
-import javax.imageio.ImageIO
 
 @Service
 class CfgRenderService(private val project: Project) {
-    val logger = getInstance(CfgRenderService::class.java)
-    val cache = CacheBuilder.newBuilder().weakKeys().build<VirtualFile, Int>()
+    private val universe = SVGUniverse()
+    private val logger = getInstance(CfgRenderService::class.java)
+    private val cache = CacheBuilder.newBuilder().weakKeys().build<VirtualFile, Int>()
 
-    fun getImage(key: GraphKey): CompletableFuture<BufferedImage?> {
+    fun getSvg(key: GraphKey): CompletableFuture<SVGDiagram?> {
         val graph = getGraphString(key.virtualFile)
-        return getGraphImages(key, graph)
+        return getGraphSvg(key, graph)
     }
 
     private fun getGraphString(vf: VirtualFile): String {
@@ -43,7 +45,7 @@ class CfgRenderService(private val project: Project) {
         return sb.toString()
     }
 
-    private fun getGraphImages(key: GraphKey, graph: String): CompletableFuture<BufferedImage?> {
+    private fun getGraphSvg(key: GraphKey, graph: String): CompletableFuture<SVGDiagram?> {
         if (!isDotAvailable()) return CompletableFuture.completedFuture(null)
         return CompletableFuture.supplyAsync({
             val vf = key.virtualFile
@@ -59,24 +61,26 @@ class CfgRenderService(private val project: Project) {
                         processes += graphKey to ProcessBuilder(
                             "dot",
                             this.absolutePath,
-                            "-Tpng",
+                            "-Tsvg",
                             "-o",
-                            graphKey.getPngFile().absolutePath
+                            graphKey.getSvgFile().absolutePath
                         ).start()
                     }
                 }
                 processes.forEach { (key, process) ->
                     process.waitFor()
-                    if (process.exitValue() != 0) {
+                    if (process.exitValue() == 0) {
+                        key.getSvgFile().writeText(key.getSvgFile().readText().replace("stroke=\"transparent\"", ""))
+                    } else {
                         logger.error("Failed to convert ${key.getDotFile()} to PNG with dot.")
-                        key.getPngFile().delete()
+                        key.getSvgFile().delete()
                     }
                 }
             }
-            if (!key.getPngFile().exists()) {
+            if (!key.getSvgFile().exists()) {
                 return@supplyAsync null
             }
-            ImageIO.read(key.getPngFile())
+            universe.getDiagram(universe.loadSVG(key.getSvgFile().inputStream(), UUID.randomUUID().toString()))
         }, executorService)
     }
 
@@ -90,8 +94,8 @@ class CfgRenderService(private val project: Project) {
     private fun GraphKey.getDotFile(): File =
         rendersRoot.resolve("cfg" + VfsUtil.virtualToIoFile(virtualFile).absolutePath + "/" + name + ".dot")
 
-    private fun GraphKey.getPngFile(): File =
-        rendersRoot.resolve("cfg" + VfsUtil.virtualToIoFile(virtualFile).absolutePath + "/" + name + ".png")
+    private fun GraphKey.getSvgFile(): File =
+        rendersRoot.resolve("cfg" + VfsUtil.virtualToIoFile(virtualFile).absolutePath + "/" + name + ".svg")
 
     companion object {
         private val rendersRoot = File(System.getProperty("java.io.tmpdir")).resolve("firviewer")
@@ -150,11 +154,12 @@ digraph atLeastOnce_kt {
 
     fun List<String>.replaceGraphColors(): String =
         (header + this + listOf("}")).joinToString(System.lineSeparator()) {
-            it.replace("=green", "=\"#38c75e\"")
             if (dark) {
-                it.replace("=blue", "=\"#2abbd1\"").replace("=gray", "=\"#7a7a7a\"")
+                it.replace("=blue", "=\"#2abbd1\"")
+                    .replace("=gray", "=\"#7a7a7a\"")
+                    .replace("=green", "=\"#44ff3d\"")
             } else {
-                it
+                it.replace("=green", "=\"#3acf61\"")
             }
         }
 

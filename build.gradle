@@ -15,6 +15,7 @@ repositories {
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib"
     implementation "org.jetbrains.kotlin:kotlin-reflect"
+    implementation group: 'com.kitfox.svg', name: 'svg-salamander', version: '1.0'
     compileOnly files("kotlin-plugin.jar")
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'

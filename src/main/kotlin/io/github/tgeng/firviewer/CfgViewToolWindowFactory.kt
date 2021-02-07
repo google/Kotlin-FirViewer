@@ -31,8 +31,8 @@ class CfgViewToolWindowFactory : ToolWindowFactory {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         toolWindow.title = "CfgViewer"
         toolWindow.setIcon(AllIcons.Toolwindows.ToolWindowAnt)
-        val declarationView = ImageView()
-        val fileView = ImageView()
+        val declarationView = SvgView()
+        val fileView = SvgView()
 
         toolWindow.contentManager.addContent(
             toolWindow.contentManager.factory.createContent(
@@ -151,25 +151,25 @@ class CfgViewToolWindowFactory : ToolWindowFactory {
 
     private fun Project.refreshDeclarationView(
         toolWindow: ToolWindow,
-        view: ImageView,
+        view: SvgView,
         graphKey: CfgRenderService.GraphKey
     ) {
         if (!toolWindow.isVisible) return
-        CfgRenderService.getInstance(this).getImage(graphKey).thenAccept {
-            if (it != null) view.setImage(it)
+        CfgRenderService.getInstance(this).getSvg(graphKey).thenAccept {
+            if (it != null) view.setSvg(it)
         }
     }
 
     private fun Project.refreshFileView(
         toolWindow: ToolWindow,
-        view: ImageView,
+        view: SvgView,
     ) {
         if (!toolWindow.isVisible) return
         val editor = FileEditorManager.getInstance(this).selectedTextEditor ?: return
         val vf = FileDocumentManager.getInstance().getFile(editor.document) ?: return
         val cfgRenderService = CfgRenderService.getInstance(this)
-        cfgRenderService.getImage(cfgRenderService.getGraphKey(vf)).thenAccept {
-            if (it != null) view.setImage(it)
+        cfgRenderService.getSvg(cfgRenderService.getGraphKey(vf)).thenAccept {
+            if (it != null) view.setSvg(it)
         }
     }
 }
