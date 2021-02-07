@@ -15,7 +15,7 @@ Note: This plugin **only** works with Kotlin plugin in FIR mode (Set `idea.fir.p
 
 ## How to use?
 
-The plugin provides two tool windows
+The plugin provides three tool windows
 * FIR Viewer (View -> Tool Windows -> FIR Viewer): shows FIR structures for the current opened file
 * KT Viewer (View -> Tool Windows -> KT Viewer): shows the Kotlin PSI structures for the current opened file plus some information exposed by the new idea-frontend-api (those carries star icons)
 * CFG Viewer (View -> Tool Windows -> CFG Viewer): shows the FIR control flow graph
