@@ -49,16 +49,16 @@ class CfgViewToolWindowFactory : ToolWindowFactory {
             )
         )
 
+        var currentGraphKey: CfgRenderService.GraphKey? = null
         fun refresh() {
             DumbService.getInstance(project).runWhenSmart {
                 project.refreshFileView(toolWindow, fileView)
-                project.getCurrentGraphKey()?.let {
+                (project.getCurrentGraphKey() ?: currentGraphKey)?.let {
                     project.refreshDeclarationView(toolWindow, declarationView, it)
                 }
             }
         }
 
-        var currentGraphKey: CfgRenderService.GraphKey? = null
         val caretListener = object : CaretListener {
             override fun caretPositionChanged(event: CaretEvent) {
                 val key = project.getCurrentGraphKey()

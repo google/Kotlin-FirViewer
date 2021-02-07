@@ -52,6 +52,7 @@ class CfgRenderService(private val project: Project) {
             val storedHash = cache.get(vf) { 0 }
             if (storedHash != graph.hashCode()) {
                 cache.put(vf, graph.hashCode())
+                vf.getScratchDir().deleteRecursively()
                 val processes = mutableListOf<Pair<GraphKey, Process>>()
                 for ((name, graph) in splitGraphs(graph)) {
                     val graphKey = GraphKey(vf, name)
@@ -80,7 +81,9 @@ class CfgRenderService(private val project: Project) {
             if (!key.getSvgFile().exists()) {
                 return@supplyAsync null
             }
-            universe.getDiagram(universe.loadSVG(key.getSvgFile().inputStream(), UUID.randomUUID().toString()))
+            key.getSvgFile().inputStream().use { it ->
+                universe.getDiagram(universe.loadSVG(it, UUID.randomUUID().toString()))
+            }
         }, executorService)
     }
 
@@ -91,11 +94,10 @@ class CfgRenderService(private val project: Project) {
 
     data class GraphKey(val virtualFile: VirtualFile, val name: String)
 
-    private fun GraphKey.getDotFile(): File =
-        rendersRoot.resolve("cfg" + VfsUtil.virtualToIoFile(virtualFile).absolutePath + "/" + name + ".dot")
-
-    private fun GraphKey.getSvgFile(): File =
-        rendersRoot.resolve("cfg" + VfsUtil.virtualToIoFile(virtualFile).absolutePath + "/" + name + ".svg")
+    private fun GraphKey.getDotFile(): File = virtualFile.getScratchDir().resolve(name + ".dot")
+    private fun GraphKey.getSvgFile(): File = virtualFile.getScratchDir().resolve(name + ".svg")
+    private fun VirtualFile.getScratchDir(): File =
+        rendersRoot.resolve("cfg" + VfsUtil.virtualToIoFile(this).absolutePath)
 
     companion object {
         private val rendersRoot = File(System.getProperty("java.io.tmpdir")).resolve("firviewer")
