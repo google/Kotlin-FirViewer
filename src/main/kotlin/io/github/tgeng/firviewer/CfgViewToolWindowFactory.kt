@@ -17,6 +17,7 @@ import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.psi.PsiManager
 import org.jetbrains.kotlin.fir.declarations.FirControlFlowGraphOwner
+import org.jetbrains.kotlin.fir.resolve.dfa.cfg.CFGNode
 import org.jetbrains.kotlin.fir.resolve.dfa.controlFlowGraph
 import org.jetbrains.kotlin.idea.fir.low.level.api.api.FirModuleResolveState
 import org.jetbrains.kotlin.idea.fir.low.level.api.api.getOrBuildFirSafe
@@ -105,6 +106,7 @@ class CfgViewToolWindowFactory : ToolWindowFactory {
     }
 
     private fun Project.getCurrentGraphKey(): CfgRenderService.GraphKey? {
+        if (DumbService.isDumb(this)) return null
         val editor = FileEditorManager.getInstance(this).selectedTextEditor ?: return null
         val vf = FileDocumentManager.getInstance().getFile(editor.document) ?: return null
         val offset: Int = editor.caretModel.offset
@@ -115,25 +117,28 @@ class CfgViewToolWindowFactory : ToolWindowFactory {
         if (element == null) return null
         var ktElement = element as KtElement?
         val resolveState = ktElement!!.getResolveState()
-        var cfgOwner: FirControlFlowGraphOwner? = null
+        var topLevelCfgEnterNode: CFGNode<*>? = null
         try {
 
             while (ktElement != null) {
-                cfgOwner = ktElement.getAsCfgOwner(resolveState)
-                if (cfgOwner != null) break
+                topLevelCfgEnterNode = ktElement.getTopLevelCfgEnterNode(resolveState)
+                if (topLevelCfgEnterNode != null) break
                 ktElement = ktElement.parentKtElement
             }
         } catch (e: Throwable) {
             logger.warn(e)
             return null
         }
-        if (cfgOwner == null) return null
-        val node = cfgOwner.controlFlowGraphReference?.controlFlowGraph?.enterNode ?: return null
-        return CfgRenderService.getInstance(this).getGraphKey(vf, node)
+        if (topLevelCfgEnterNode == null) return null
+        return CfgRenderService.getInstance(this).getGraphKey(vf, topLevelCfgEnterNode)
     }
 
-    private fun KtElement.getAsCfgOwner(resolveState: FirModuleResolveState): FirControlFlowGraphOwner? =
-        getOrBuildFirSafe<FirControlFlowGraphOwner>(resolveState)
+    private fun KtElement.getTopLevelCfgEnterNode(resolveState: FirModuleResolveState): CFGNode<*>? {
+        val cfg = getOrBuildFirSafe<FirControlFlowGraphOwner>(resolveState)?.controlFlowGraphReference?.controlFlowGraph
+            ?: return null
+        if (cfg.owner != null) return null // Not a top level CFG
+        return cfg.enterNode
+    }
 
     private val KtElement.parentKtElement: KtElement?
         get() {

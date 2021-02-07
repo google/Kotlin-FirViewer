@@ -23,11 +23,6 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 import javax.imageio.ImageIO
 
-
-interface CfgGraphUpdateListener {
-    fun graphCreated(key: CfgRenderService.GraphKey)
-}
-
 @Service
 class CfgRenderService(private val project: Project) {
     val logger = getInstance(CfgRenderService::class.java)
