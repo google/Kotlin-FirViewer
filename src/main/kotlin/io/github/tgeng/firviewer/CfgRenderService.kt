@@ -162,6 +162,7 @@ digraph atLeastOnce_kt {
                     .replace("=green", "=\"#44ff3d\"")
             } else {
                 it.replace("=green", "=\"#3acf61\"")
+                    .replace("=gray", "=\"#bdbdbd\"")
             }
         }
 
