@@ -160,6 +160,8 @@ digraph atLeastOnce_kt {
                 it.replace("=blue", "=\"#2abbd1\"")
                     .replace("=gray", "=\"#7a7a7a\"")
                     .replace("=green", "=\"#44ff3d\"")
+                    .replace("=yellow", "=\"#9c8700\"")
+                    .replace("=red", "=\"#d10808\"")
             } else {
                 it.replace("=green", "=\"#3acf61\"")
                     .replace("=gray", "=\"#bdbdbd\"")
