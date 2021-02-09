@@ -8,7 +8,7 @@ A small tool to inspect Kotlin FIR structure.
 
 Note: This plugin **only** works with Kotlin plugin in FIR mode (Set `idea.fir.plugin=true` in [gradle.properties](https://github.com/JetBrains/kotlin/blob/master/gradle.properties)).
 
-1. Go to the [release](https://github.com/tgeng/FirViewer/releases) page and download the most recent release.
+1. Go to the [release](https://github.com/google/Kotlin-FirViewer/releases) page and download the most recent release.
 2. Launch the dev IntelliJ instance from the [Kotlin project](https://github.com/JetBrains/kotlin) with target `IDEA (No ProcessCanceledException)`
    ![image](https://user-images.githubusercontent.com/29584386/107079611-f35a2200-67a4-11eb-9f53-716265e2e70f.png)
 3. Open plugins setting. Click the gear icon on top, select "Install plugin from disk...", and pick the downloaded zip file and click OK.
