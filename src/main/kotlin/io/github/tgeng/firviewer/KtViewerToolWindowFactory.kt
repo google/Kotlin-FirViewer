@@ -19,20 +19,15 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.editor.Document
-import com.intellij.openapi.editor.event.DocumentEvent
-import com.intellij.openapi.editor.event.DocumentListener
-import com.intellij.openapi.fileEditor.*
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.FileEditorManagerListener
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
-import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiManager
-import org.jetbrains.kotlin.psi.KtElement
+import com.intellij.psi.*
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtVisitorVoid
 import java.awt.event.FocusAdapter
 import java.awt.event.FocusEvent
 
@@ -57,11 +52,11 @@ class KtViewerToolWindowFactory : ToolWindowFactory {
 
         refresh(project, toolWindow)
         project.messageBus.connect()
-            .subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
-                override fun fileOpened(source: FileEditorManager, file: VirtualFile) {
-                    refresh(project, toolWindow)
-                }
-            })
+                .subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
+                    override fun fileOpened(source: FileEditorManager, file: VirtualFile) {
+                        refresh(project, toolWindow)
+                    }
+                })
 
         project.messageBus.connect().subscribe(EVENT_TOPIC, Runnable { refresh(project, toolWindow) })
     }
@@ -73,11 +68,12 @@ class KtViewerToolWindowFactory : ToolWindowFactory {
         val treeUiState = cache.get(ktFile) {
             val treeModel = ObjectTreeModel(
                     ktFile,
-                    KtElement::class,
+                    PsiElement::class,
                     { it }) { consumer ->
                 ApplicationManager.getApplication().runReadAction {
-                    this.takeIf { it.isValid }?.acceptChildren(object : KtVisitorVoid() {
-                        override fun visitKtElement(element: KtElement) {
+                    this.takeIf { it.isValid }?.acceptChildren(object : PsiElementVisitor() {
+                        override fun visitElement(element: PsiElement) {
+                            if (element is PsiWhiteSpace) return
                             consumer(element)
                         }
                     })

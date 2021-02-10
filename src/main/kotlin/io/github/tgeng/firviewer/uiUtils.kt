@@ -125,7 +125,7 @@ fun highlightInEditor(obj: Any, project: Project) {
 
 val unitType = Unit::class.createType()
 val skipMethodNames = setOf("copy", "toString", "delete", "clone", "getUserDataString", "hashCode", "getClass", "component1", "component2", "component3", "component4", "component5")
-val psiElementMethods = PsiElement::class.java.methods.map { it.name }.toSet()
+val psiElementMethods = PsiElement::class.java.methods.map { it.name }.toSet() - setOf("getTextRange", "getTextRangeInParent", "getTextLength", "getText", "getResolveScope", "getUseScope")
 
 @OptIn(HackToForceAllowRunningAnalyzeOnEDT::class)
 fun Any.traverseObjectProperty(propFilter: (KCallable<*>) -> Boolean = { true }, methodFilter: (Method) -> Boolean = { true },

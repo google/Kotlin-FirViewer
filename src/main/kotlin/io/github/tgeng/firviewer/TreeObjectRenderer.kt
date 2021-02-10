@@ -15,6 +15,7 @@
 package io.github.tgeng.firviewer
 
 import com.intellij.icons.AllIcons
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import org.jetbrains.kotlin.fir.FirLabel
 import org.jetbrains.kotlin.fir.FirPureAbstractElement
@@ -104,7 +105,7 @@ class TreeObjectRenderer : TreeCellRenderer {
                 is KtVariableDeclaration -> AllIcons.Nodes.Variable
                 else -> null
             })
-            is KtElement -> type(node) + label(e.text)
+            is PsiElement -> type(node) + label(e.text)
             else -> label(e.toString())
         }
     }
