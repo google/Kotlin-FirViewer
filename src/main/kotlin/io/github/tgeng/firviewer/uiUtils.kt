@@ -23,9 +23,11 @@ import com.intellij.openapi.editor.markup.HighlighterTargetArea
 import com.intellij.openapi.editor.markup.TextAttributes
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.scale.JBUIScale
+import org.jetbrains.kotlin.fir.FirPsiSourceElement
 import org.jetbrains.kotlin.fir.FirPureAbstractElement
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.render
@@ -104,14 +106,19 @@ operator fun JComponent.plus(that: JComponent): JPanel {
 }
 
 fun highlightInEditor(obj: Any, project: Project) {
-    val (startOffset, endOffset) = when (obj) {
-        is FirPureAbstractElement -> obj.source?.let { it.startOffset to it.endOffset }
-        is PsiElement -> obj.textRange?.let { it.startOffset to it.endOffset }
+  val editorManager = FileEditorManager.getInstance(project) ?: return
+  val editor: Editor = editorManager.selectedTextEditor ?: return
+  editor.markupModel.removeAllHighlighters()
+  val (vf, startOffset, endOffset) = when (obj) {
+        is FirPureAbstractElement -> obj.source?.let {
+          val source = it as? FirPsiSourceElement<*> ?: return@let  null
+          FileLocation(source.psi.containingFile.virtualFile, it.startOffset, it.endOffset)
+        }
+        is PsiElement -> obj.textRange?.let { FileLocation(obj.containingFile.virtualFile, it.startOffset, it.endOffset) }
         else -> null
     } ?: return
-    val editorManager = FileEditorManager.getInstance(project) ?: return
-    val editor: Editor = editorManager.selectedTextEditor ?: return
-    editor.markupModel.removeAllHighlighters()
+    if(vf != FileEditorManager.getInstance(project).selectedFiles.firstOrNull()) return
+
     val textAttributes =
             TextAttributes(null, null, Color.GRAY, EffectType.LINE_UNDERSCORE, Font.PLAIN)
     editor.markupModel.addRangeHighlighter(
@@ -122,6 +129,8 @@ fun highlightInEditor(obj: Any, project: Project) {
             HighlighterTargetArea.EXACT_RANGE
     )
 }
+
+private data class FileLocation(val vf: VirtualFile, val startIndex:Int, val endIndex: Int)
 
 val unitType = Unit::class.createType()
 val skipMethodNames = setOf("copy", "toString", "delete", "clone", "getUserDataString", "hashCode", "getClass", "component1", "component2", "component3", "component4", "component5")
@@ -256,4 +265,3 @@ fun Any.isData(): Boolean = try {
 //    return null
 //  }
 //}
-

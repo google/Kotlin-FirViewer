@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.idea.caches.project.IdeaModuleInfo
 import org.jetbrains.kotlin.idea.caches.project.getModuleInfos
 import org.jetbrains.kotlin.idea.fir.low.level.api.api.getResolveState
 import org.jetbrains.kotlin.idea.frontend.api.*
+import org.jetbrains.kotlin.idea.frontend.api.components.KtDiagnosticCheckerFilter
 import org.jetbrains.kotlin.idea.frontend.api.symbols.KtSymbol
 import org.jetbrains.kotlin.idea.frontend.api.types.KtType
 import org.jetbrains.kotlin.psi.KtElement
@@ -273,7 +274,7 @@ private class ObjectTableModel(
         val result = mutableListOf<RowData>()
         when (obj) {
             is KtElement -> {
-                fun getValue() = try {
+                fun getScopeContextForPosition() = try {
                     hackyAllowRunningOnEdt {
                         analyzeWithReadAction(obj.containingKtFile) {
                             obj.containingKtFile.getScopeContextForPosition(obj)
@@ -282,9 +283,33 @@ private class ObjectTableModel(
                 } catch (e: Throwable) {
                     e
                 }
+                var value = getScopeContextForPosition()
+                result += RowData(label("scopeAtPosition"), value.getTypeAndId(), value, ::getScopeContextForPosition)
 
-                val value = getValue()
-                result += RowData(label("scopeAtPosition"), value.getTypeAndId(), value, ::getValue)
+                fun collectDiagnosticsForFile() = try {
+                    hackyAllowRunningOnEdt {
+                        analyzeWithReadAction(obj.containingKtFile) {
+                            obj.containingKtFile.collectDiagnosticsForFile(KtDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
+                        }
+                    }
+                } catch (e:  Throwable){
+                    e
+                }
+                value = collectDiagnosticsForFile()
+                result += RowData(label("collectDiagnosticsForFile"), value.getTypeAndId(), value, ::collectDiagnosticsForFile)
+
+                fun getDiagnostics() = try {
+                    hackyAllowRunningOnEdt {
+                        analyzeWithReadAction(obj) {
+                            obj.getDiagnostics(KtDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
+                        }
+                    }
+                } catch (e:  Throwable){
+                    e
+                }
+                value = getDiagnostics()
+                result += RowData(label("getDiagnostics"), value.getTypeAndId(), value, ::getDiagnostics)
+
                 result += obj::getModuleInfos.toRowData()
                 result += obj::getResolveState.toRowData()
             }
