@@ -90,7 +90,7 @@ fun type(e: TreeNode<*>): JComponent {
 
 private val twoPoint = JBUIScale.scale(2)
 
-operator fun JComponent.plus(that: JComponent): JPanel {
+operator fun JComponent.plus(that: JComponent?): JPanel {
     return if (this is JPanel) {
         add(that)
         this
@@ -99,25 +99,25 @@ operator fun JComponent.plus(that: JComponent): JPanel {
             vgap = twoPoint
         }).apply {
             add(this@plus)
-            add(that)
+            if (that != null) add(that)
             isOpaque = false
         }
     }
 }
 
 fun highlightInEditor(obj: Any, project: Project) {
-  val editorManager = FileEditorManager.getInstance(project) ?: return
-  val editor: Editor = editorManager.selectedTextEditor ?: return
-  editor.markupModel.removeAllHighlighters()
-  val (vf, startOffset, endOffset) = when (obj) {
+    val editorManager = FileEditorManager.getInstance(project) ?: return
+    val editor: Editor = editorManager.selectedTextEditor ?: return
+    editor.markupModel.removeAllHighlighters()
+    val (vf, startOffset, endOffset) = when (obj) {
         is FirPureAbstractElement -> obj.source?.let {
-          val source = it as? FirPsiSourceElement<*> ?: return@let  null
-          FileLocation(source.psi.containingFile.virtualFile, it.startOffset, it.endOffset)
+            val source = it as? FirPsiSourceElement<*> ?: return@let null
+            FileLocation(source.psi.containingFile.virtualFile, it.startOffset, it.endOffset)
         }
         is PsiElement -> obj.textRange?.let { FileLocation(obj.containingFile.virtualFile, it.startOffset, it.endOffset) }
         else -> null
     } ?: return
-    if(vf != FileEditorManager.getInstance(project).selectedFiles.firstOrNull()) return
+    if (vf != FileEditorManager.getInstance(project).selectedFiles.firstOrNull()) return
 
     val textAttributes =
             TextAttributes(null, null, Color.GRAY, EffectType.LINE_UNDERSCORE, Font.PLAIN)
@@ -130,7 +130,7 @@ fun highlightInEditor(obj: Any, project: Project) {
     )
 }
 
-private data class FileLocation(val vf: VirtualFile, val startIndex:Int, val endIndex: Int)
+private data class FileLocation(val vf: VirtualFile, val startIndex: Int, val endIndex: Int)
 
 val unitType = Unit::class.createType()
 val skipMethodNames = setOf("copy", "toString", "delete", "clone", "getUserDataString", "hashCode", "getClass", "component1", "component2", "component3", "component4", "component5")

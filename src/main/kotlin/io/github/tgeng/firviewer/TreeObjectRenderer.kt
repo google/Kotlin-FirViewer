@@ -17,6 +17,7 @@ package io.github.tgeng.firviewer
 import com.intellij.icons.AllIcons
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.intellij.psi.util.elementType
 import org.jetbrains.kotlin.fir.FirLabel
 import org.jetbrains.kotlin.fir.FirPureAbstractElement
 import org.jetbrains.kotlin.fir.contracts.FirContractDescription
@@ -55,13 +56,13 @@ import javax.swing.tree.TreeCellRenderer
 
 class TreeObjectRenderer : TreeCellRenderer {
     override fun getTreeCellRendererComponent(
-            tree: JTree,
-            value: Any,
-            selected: Boolean,
-            expanded: Boolean,
-            leaf: Boolean,
-            row: Int,
-            hasFocus: Boolean
+        tree: JTree,
+        value: Any,
+        selected: Boolean,
+        expanded: Boolean,
+        leaf: Boolean,
+        row: Int,
+        hasFocus: Boolean
     ): Component {
         val node = value as? TreeNode<*> ?: return label("nothing to show")
         return when (val e = node.t) {
@@ -98,14 +99,20 @@ class TreeObjectRenderer : TreeCellRenderer {
             // is FirOuterClassTypeParameterRef,
             is FirTypeParameterRef -> type(node) + render(e as FirPureAbstractElement)
             is PsiFile -> type(node) + label(e.name)
-            is KtDeclaration -> type(node) + label(e.name ?: "<anonymous>", icon = when (e) {
-                is KtClassOrObject -> AllIcons.Nodes.Class
-                is KtFunction -> AllIcons.Nodes.Function
-                is KtProperty -> AllIcons.Nodes.Property
-                is KtVariableDeclaration -> AllIcons.Nodes.Variable
-                else -> null
-            })
-            is PsiElement -> type(node) + label(e.text)
+            is PsiElement -> type(node) +
+                    e.elementType?.let { label("[$it]", italic = true) } +
+                    when (e) {
+                        is KtDeclaration -> label(
+                            e.name ?: "<anonymous>", icon = when (e) {
+                                is KtClassOrObject -> AllIcons.Nodes.Class
+                                is KtFunction -> AllIcons.Nodes.Function
+                                is KtProperty -> AllIcons.Nodes.Property
+                                is KtVariableDeclaration -> AllIcons.Nodes.Variable
+                                else -> null
+                            }
+                        )
+                        else -> label(e.text)
+                    }
             else -> label(e.toString())
         }
     }
