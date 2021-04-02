@@ -126,7 +126,7 @@ fun highlightInEditor(obj: Any, project: Project) {
     if (vf != FileEditorManager.getInstance(project).selectedFiles.firstOrNull()) return
 
     val textAttributes =
-        TextAttributes(null, null, Color.GRAY, EffectType.LINE_UNDERSCORE, Font.PLAIN)
+        TextAttributes(null, null, Color.GRAY, EffectType.BOXED, Font.PLAIN)
     editor.markupModel.addRangeHighlighter(
         startOffset,
         endOffset,
