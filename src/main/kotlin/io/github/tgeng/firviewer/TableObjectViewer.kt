@@ -27,6 +27,8 @@ import org.jetbrains.kotlin.idea.fir.low.level.api.api.getResolveState
 import org.jetbrains.kotlin.idea.frontend.api.*
 import org.jetbrains.kotlin.idea.frontend.api.components.KtDiagnosticCheckerFilter
 import org.jetbrains.kotlin.idea.frontend.api.symbols.KtSymbol
+import org.jetbrains.kotlin.idea.frontend.api.tokens.HackToForceAllowRunningAnalyzeOnEDT
+import org.jetbrains.kotlin.idea.frontend.api.tokens.hackyAllowRunningOnEdt
 import org.jetbrains.kotlin.idea.frontend.api.types.KtType
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtFile
@@ -251,7 +253,7 @@ private class ObjectTableModel(
     private fun getKtAnalysisSessionBasedRows(): List<RowData> {
         if (elementToAnalyze == null) return emptyList()
         return hackyAllowRunningOnEdt {
-            analyzeWithReadAction(elementToAnalyze) {
+            analyseWithReadAction(elementToAnalyze) {
                 KtAnalysisSession::class.members.filter { it.visibility == KVisibility.PUBLIC && it.parameters.size == 2 && it.name != "equals" }
                     .mapNotNull { prop ->
                         try {
@@ -276,7 +278,7 @@ private class ObjectTableModel(
             is KtElement -> {
                 fun getScopeContextForPosition() = try {
                     hackyAllowRunningOnEdt {
-                        analyzeWithReadAction(obj.containingKtFile) {
+                        analyseWithReadAction(obj.containingKtFile) {
                             obj.containingKtFile.getScopeContextForPosition(obj)
                         }
                     }
@@ -288,7 +290,7 @@ private class ObjectTableModel(
 
                 fun collectDiagnosticsForFile() = try {
                     hackyAllowRunningOnEdt {
-                        analyzeWithReadAction(obj.containingKtFile) {
+                        analyseWithReadAction(obj.containingKtFile) {
                             obj.containingKtFile.collectDiagnosticsForFile(KtDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
                         }
                     }
@@ -300,7 +302,7 @@ private class ObjectTableModel(
 
                 fun getDiagnostics() = try {
                     hackyAllowRunningOnEdt {
-                        analyzeWithReadAction(obj) {
+                        analyseWithReadAction(obj) {
                             obj.getDiagnostics(KtDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
                         }
                     }

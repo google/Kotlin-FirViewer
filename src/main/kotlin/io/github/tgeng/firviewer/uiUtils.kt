@@ -32,8 +32,8 @@ import org.jetbrains.kotlin.fir.FirPureAbstractElement
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.utils.AttributeArrayOwner
-import org.jetbrains.kotlin.idea.frontend.api.HackToForceAllowRunningAnalyzeOnEDT
-import org.jetbrains.kotlin.idea.frontend.api.hackyAllowRunningOnEdt
+import org.jetbrains.kotlin.idea.frontend.api.tokens.HackToForceAllowRunningAnalyzeOnEDT
+import org.jetbrains.kotlin.idea.frontend.api.tokens.hackyAllowRunningOnEdt
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.psiUtil.endOffset
 import org.jetbrains.kotlin.psi.psiUtil.startOffset
@@ -55,14 +55,14 @@ import kotlin.reflect.jvm.javaGetter
 import kotlin.reflect.jvm.javaMethod
 
 fun label(
-        s: String,
-        bold: Boolean = false,
-        italic: Boolean = false,
-        multiline: Boolean = false,
-        icon: Icon? = null,
-        tooltipText: String? = null
+    s: String,
+    bold: Boolean = false,
+    italic: Boolean = false,
+    multiline: Boolean = false,
+    icon: Icon? = null,
+    tooltipText: String? = null
 ) = JBLabel(
-        if (multiline) ("<html>" + s.replace("\n", "<br/>").replace(" ", "&nbsp;") + "</html>") else s
+    if (multiline) ("<html>" + s.replace("\n", "<br/>").replace(" ", "&nbsp;") + "</html>") else s
 ).apply {
     this.icon = icon
     this.toolTipText = toolTipText
@@ -72,12 +72,12 @@ fun label(
 fun render(e: FirPureAbstractElement) = JBLabel(e.render())
 fun type(e: TreeNode<*>): JComponent {
     val nameAndType = label(
-            if (e.name == "" || e.name.startsWith('<')) {
-                ""
-            } else {
-                e.name + ": "
-            } + e.t::class.simpleName,
-            bold = true
+        if (e.name == "" || e.name.startsWith('<')) {
+            ""
+        } else {
+            e.name + ": "
+        } + e.t::class.simpleName,
+        bold = true
     )
     val address = label("@" + Integer.toHexString(System.identityHashCode(e.t)))
     val nameTypeAndAddress = nameAndType + address
@@ -114,100 +114,128 @@ fun highlightInEditor(obj: Any, project: Project) {
             val source = it as? FirPsiSourceElement<*> ?: return@let null
             FileLocation(source.psi.containingFile.virtualFile, it.startOffset, it.endOffset)
         }
-        is PsiElement -> obj.textRange?.let { FileLocation(obj.containingFile.virtualFile, it.startOffset, it.endOffset) }
+        is PsiElement -> obj.textRange?.let {
+            FileLocation(
+                obj.containingFile.virtualFile,
+                it.startOffset,
+                it.endOffset
+            )
+        }
         else -> null
     } ?: return
     if (vf != FileEditorManager.getInstance(project).selectedFiles.firstOrNull()) return
 
     val textAttributes =
-            TextAttributes(null, null, Color.GRAY, EffectType.LINE_UNDERSCORE, Font.PLAIN)
+        TextAttributes(null, null, Color.GRAY, EffectType.LINE_UNDERSCORE, Font.PLAIN)
     editor.markupModel.addRangeHighlighter(
-            startOffset,
-            endOffset,
-            HighlighterLayer.CARET_ROW,
-            textAttributes,
-            HighlighterTargetArea.EXACT_RANGE
+        startOffset,
+        endOffset,
+        HighlighterLayer.CARET_ROW,
+        textAttributes,
+        HighlighterTargetArea.EXACT_RANGE
     )
 }
 
 private data class FileLocation(val vf: VirtualFile, val startIndex: Int, val endIndex: Int)
 
 val unitType = Unit::class.createType()
-val skipMethodNames = setOf("copy", "toString", "delete", "clone", "getUserDataString", "hashCode", "getClass", "component1", "component2", "component3", "component4", "component5")
-val psiElementMethods = PsiElement::class.java.methods.map { it.name }.toSet() - setOf("getTextRange", "getTextRangeInParent", "getTextLength", "getText", "getResolveScope", "getUseScope")
+val skipMethodNames = setOf(
+    "copy",
+    "toString",
+    "delete",
+    "clone",
+    "getUserDataString",
+    "hashCode",
+    "getClass",
+    "component1",
+    "component2",
+    "component3",
+    "component4",
+    "component5"
+)
+val psiElementMethods = PsiElement::class.java.methods.map { it.name }.toSet() - setOf(
+    "getTextRange",
+    "getTextRangeInParent",
+    "getTextLength",
+    "getText",
+    "getResolveScope",
+    "getUseScope"
+)
 
 @OptIn(HackToForceAllowRunningAnalyzeOnEDT::class)
-fun Any.traverseObjectProperty(propFilter: (KCallable<*>) -> Boolean = { true }, methodFilter: (Method) -> Boolean = { true },
-                               fn: (name: String, value: Any?, () -> Any?) -> Unit) {
+fun Any.traverseObjectProperty(
+    propFilter: (KCallable<*>) -> Boolean = { true }, methodFilter: (Method) -> Boolean = { true },
+    fn: (name: String, value: Any?, () -> Any?) -> Unit
+) {
     try {
         this::class.members
-                .filter { propFilter(it) && it.parameters.size == 1 && it.visibility == KVisibility.PUBLIC && it.returnType != unitType && it.name !in skipMethodNames && (this !is PsiElement || it.name !in psiElementMethods) }
-                .sortedWith { m1, m2 ->
-                    fun KCallable<*>.declaringClass() = when (this) {
-                        is KFunction<*> -> javaMethod?.declaringClass
-                        is KProperty<*> -> javaGetter?.declaringClass
-                        else -> null
-                    }
+            .filter { propFilter(it) && it.parameters.size == 1 && it.visibility == KVisibility.PUBLIC && it.returnType != unitType && it.name !in skipMethodNames && (this !is PsiElement || it.name !in psiElementMethods) }
+            .sortedWith { m1, m2 ->
+                fun KCallable<*>.declaringClass() = when (this) {
+                    is KFunction<*> -> javaMethod?.declaringClass
+                    is KProperty<*> -> javaGetter?.declaringClass
+                    else -> null
+                }
 
-                    val m1Class = m1.declaringClass()
-                    val m2Class = m2.declaringClass()
-                    when {
-                        m1Class == m2Class -> 0
-                        m1Class == null -> 1
-                        m2Class == null -> -1
-                        m1Class.isAssignableFrom(m2Class) -> -1
-                        else -> 1
+                val m1Class = m1.declaringClass()
+                val m2Class = m2.declaringClass()
+                when {
+                    m1Class == m2Class -> 0
+                    m1Class == null -> 1
+                    m2Class == null -> -1
+                    m1Class.isAssignableFrom(m2Class) -> -1
+                    else -> 1
+                }
+            }
+            .forEach { prop ->
+                val value = try {
+                    prop.isAccessible = true
+                    hackyAllowRunningOnEdt {
+                        prop.call(this)
+                    }
+                } catch (e: Throwable) {
+                    return@forEach
+                }
+                fn(prop.name, value) {
+                    hackyAllowRunningOnEdt {
+                        prop.call(this)
                     }
                 }
-                .forEach { prop ->
-                    val value = try {
-                        prop.isAccessible = true
-                        hackyAllowRunningOnEdt {
-                            prop.call(this)
-                        }
-                    } catch (e: Throwable) {
-                        return@forEach
-                    }
-                    fn(prop.name, value) {
-                        hackyAllowRunningOnEdt {
-                            prop.call(this)
-                        }
-                    }
-                }
+            }
     } catch (e: Throwable) {
         // fallback to traverse with Java reflection
         this::class.java.methods
-                .filter { methodFilter(it) && it.name !in skipMethodNames && it.parameterCount == 0 && it.modifiers and Modifier.PUBLIC != 0 && it.returnType.simpleName != "void" && (this !is PsiElement || it.name !in psiElementMethods) }
-                // methods in super class is at the beginning
-                .sortedWith { m1, m2 ->
-                    when {
-                        m1.declaringClass == m2.declaringClass -> 0
-                        m1.declaringClass.isAssignableFrom(m2.declaringClass) -> -1
-                        else -> 1
+            .filter { methodFilter(it) && it.name !in skipMethodNames && it.parameterCount == 0 && it.modifiers and Modifier.PUBLIC != 0 && it.returnType.simpleName != "void" && (this !is PsiElement || it.name !in psiElementMethods) }
+            // methods in super class is at the beginning
+            .sortedWith { m1, m2 ->
+                when {
+                    m1.declaringClass == m2.declaringClass -> 0
+                    m1.declaringClass.isAssignableFrom(m2.declaringClass) -> -1
+                    else -> 1
+                }
+            }
+            .distinctBy { it.name }
+            .forEach { method ->
+                val value = try {
+                    hackyAllowRunningOnEdt {
+                        method.invoke(this)
+                    }
+                } catch (e: Throwable) {
+                    return@forEach
+                }
+                fn(CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_CAMEL, method.name.removePrefix("get")), value) {
+                    hackyAllowRunningOnEdt {
+                        method.invoke(this)
                     }
                 }
-                .distinctBy { it.name }
-                .forEach { method ->
-                    val value = try {
-                        hackyAllowRunningOnEdt {
-                            method.invoke(this)
-                        }
-                    } catch (e: Throwable) {
-                        return@forEach
-                    }
-                    fn(CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_CAMEL, method.name.removePrefix("get")), value) {
-                        hackyAllowRunningOnEdt {
-                            method.invoke(this)
-                        }
-                    }
-                }
+            }
     }
 }
 
 fun Any.getTypeAndId(): String {
     return when {
         isData() -> this::class.simpleName
-                ?: this::class.toString()
+            ?: this::class.toString()
         else -> this::class.simpleName + " @" + Integer.toHexString(System.identityHashCode(this))
     }
 }
@@ -215,7 +243,7 @@ fun Any.getTypeAndId(): String {
 fun Any.getValueAndId(): String {
     return when {
         isData() -> this::class.simpleName
-                ?: this.toString()
+            ?: this.toString()
         else -> this::class.simpleName + " @" + Integer.toHexString(System.identityHashCode(this))
     }
 }
