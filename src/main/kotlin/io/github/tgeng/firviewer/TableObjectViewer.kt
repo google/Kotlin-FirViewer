@@ -27,9 +27,11 @@ import org.jetbrains.kotlin.idea.fir.low.level.api.api.getResolveState
 import org.jetbrains.kotlin.idea.frontend.api.*
 import org.jetbrains.kotlin.idea.frontend.api.components.KtDiagnosticCheckerFilter
 import org.jetbrains.kotlin.idea.frontend.api.symbols.KtSymbol
+import org.jetbrains.kotlin.idea.frontend.api.tokens.AlwaysAccessibleValidityTokenFactory
 import org.jetbrains.kotlin.idea.frontend.api.tokens.HackToForceAllowRunningAnalyzeOnEDT
 import org.jetbrains.kotlin.idea.frontend.api.tokens.hackyAllowRunningOnEdt
 import org.jetbrains.kotlin.idea.frontend.api.types.KtType
+import org.jetbrains.kotlin.idea.util.application.runReadAction
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtFile
 import java.awt.*
@@ -48,14 +50,14 @@ import kotlin.reflect.jvm.isAccessible
 
 
 class TableObjectViewer(
-    project: Project,
-    state: ObjectViewerUiState,
-    index: Int,
-    obj: Any,
-    ktFile: KtFile,
-    elementToAnalyze: KtElement?
+        project: Project,
+        state: ObjectViewerUiState,
+        index: Int,
+        obj: Any,
+        ktFile: KtFile,
+        elementToAnalyze: KtElement?
 ) :
-    ObjectViewer(project, state, index, ktFile, elementToAnalyze) {
+        ObjectViewer(project, state, index, ktFile, elementToAnalyze) {
     private val _model = ObjectTableModel(obj, state, elementToAnalyze)
     private val table = FittingTable(_model).apply {
 
@@ -120,7 +122,7 @@ class TableObjectViewer(
     }
 
     private inner class TableWrapper :
-        JPanel() {
+            JPanel() {
         init {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
             add(table.tableHeader)
@@ -128,7 +130,7 @@ class TableObjectViewer(
         }
 
         override fun getPreferredSize(): Dimension =
-            Dimension(1, table.preferredSize.height + table.tableHeader.preferredSize.height)
+                Dimension(1, table.preferredSize.height + table.tableHeader.preferredSize.height)
     }
 }
 
@@ -150,7 +152,7 @@ private class FittingTable(model: TableModel) : JBTable(model) {
         val rendererWidth = component.preferredSize.width
         val tableColumn = getColumnModel().getColumn(column)
         tableColumn.preferredWidth =
-            Math.max(rendererWidth + intercellSpacing.width, tableColumn.preferredWidth)
+                Math.max(rendererWidth + intercellSpacing.width, tableColumn.preferredWidth)
         if (column == 2) {
             // set row height according to the last column
             val rendererHeight = component.preferredSize.height
@@ -163,11 +165,11 @@ private class FittingTable(model: TableModel) : JBTable(model) {
 }
 
 private class ObjectTableModel(
-    val obj: Any,
-    val state: ObjectViewerUiState,
-    private val elementToAnalyze: KtElement?
+        val obj: Any,
+        val state: ObjectViewerUiState,
+        private val elementToAnalyze: KtElement?
 ) :
-    AbstractTableModel() {
+        AbstractTableModel() {
     class RowData(val name: JLabel, var type: String?, var value: Any?, val valueProvider: (() -> Any?)? = null)
 
     @OptIn(HackToForceAllowRunningAnalyzeOnEDT::class)
@@ -217,15 +219,15 @@ private class ObjectTableModel(
 
     private fun getArrayMapOwnerBasedRows(): List<RowData> {
         val arrayMap =
-            obj::class.memberProperties.first { it.name == "arrayMap" }.apply { isAccessible = true }
-                .call(obj) as ArrayMap<*>
+                obj::class.memberProperties.first { it.name == "arrayMap" }.apply { isAccessible = true }
+                        .call(obj) as ArrayMap<*>
         val typeRegistry =
-            obj::class.memberProperties.first { it.name == "typeRegistry" }
-                .apply { isAccessible = true }
-                .call(obj) as TypeRegistry<*, *>
+                obj::class.memberProperties.first { it.name == "typeRegistry" }
+                        .apply { isAccessible = true }
+                        .call(obj) as TypeRegistry<*, *>
         val idPerType =
-            TypeRegistry::class.members.first { it.name == "idPerType" }.apply { isAccessible = true }
-                .call(typeRegistry) as ConcurrentHashMap<KClass<*>, Int>
+                TypeRegistry::class.members.first { it.name == "idPerType" }.apply { isAccessible = true }
+                        .call(typeRegistry) as ConcurrentHashMap<KClass<*>, Int>
         return idPerType.mapNotNull { (key, id) ->
             val value = arrayMap[id] ?: return@mapNotNull null
             RowData(label(key.simpleName ?: key.toString()), value.getTypeAndId(), value)
@@ -237,8 +239,8 @@ private class ObjectTableModel(
         val result = mutableListOf<RowData>()
         obj.traverseObjectProperty { name, value, valueProvider ->
             if (value == null ||
-                value is Collection<*> && value.isEmpty() ||
-                value is Map<*, *> && value.isEmpty()
+                    value is Collection<*> && value.isEmpty() ||
+                    value is Map<*, *> && value.isEmpty()
             ) {
                 return@traverseObjectProperty
             }
@@ -253,20 +255,22 @@ private class ObjectTableModel(
     private fun getKtAnalysisSessionBasedRows(): List<RowData> {
         if (elementToAnalyze == null) return emptyList()
         return hackyAllowRunningOnEdt {
-            analyseWithReadAction(elementToAnalyze) {
-                KtAnalysisSession::class.members.filter { it.visibility == KVisibility.PUBLIC && it.parameters.size == 2 && it.name != "equals" }
-                    .mapNotNull { prop ->
-                        try {
-                            val value = prop.call(this, obj)
-                            RowData(label(prop.name, icon = AllIcons.Nodes.Favorite), value?.getTypeAndId(), value) {
-                                hackyAllowRunningOnEdt {
-                                    prop.call(this, obj)
+            runReadAction {
+                analyseWithCustomToken(elementToAnalyze, AlwaysAccessibleValidityTokenFactory) {
+                    KtAnalysisSession::class.members.filter { it.visibility == KVisibility.PUBLIC && it.parameters.size == 2 && it.name != "equals" }
+                            .mapNotNull { prop ->
+                                try {
+                                    val value = prop.call(this, obj)
+                                    RowData(label(prop.name, icon = AllIcons.Nodes.Favorite), value?.getTypeAndId(), value) {
+                                        hackyAllowRunningOnEdt {
+                                            prop.call(this, obj)
+                                        }
+                                    }
+                                } catch (e: Throwable) {
+                                    null
                                 }
                             }
-                        } catch (e: Throwable) {
-                            null
-                        }
-                    }
+                }
             }
         }
     }
@@ -278,23 +282,28 @@ private class ObjectTableModel(
             is KtElement -> {
                 fun getScopeContextForPosition() = try {
                     hackyAllowRunningOnEdt {
-                        analyseWithReadAction(obj.containingKtFile) {
-                            obj.containingKtFile.getScopeContextForPosition(obj)
+                        runReadAction {
+                            analyseWithCustomToken(obj.containingKtFile, AlwaysAccessibleValidityTokenFactory) {
+                                obj.containingKtFile.getScopeContextForPosition(obj)
+                            }
                         }
                     }
                 } catch (e: Throwable) {
                     e
                 }
+
                 var value = getScopeContextForPosition()
                 result += RowData(label("scopeAtPosition"), value.getTypeAndId(), value, ::getScopeContextForPosition)
 
                 fun collectDiagnosticsForFile() = try {
                     hackyAllowRunningOnEdt {
-                        analyseWithReadAction(obj.containingKtFile) {
-                            obj.containingKtFile.collectDiagnosticsForFile(KtDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
+                        runReadAction {
+                            analyseWithCustomToken(obj.containingKtFile, AlwaysAccessibleValidityTokenFactory) {
+                                obj.containingKtFile.collectDiagnosticsForFile(KtDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
+                            }
                         }
                     }
-                } catch (e:  Throwable){
+                } catch (e: Throwable) {
                     e
                 }
                 value = collectDiagnosticsForFile()
@@ -302,11 +311,13 @@ private class ObjectTableModel(
 
                 fun getDiagnostics() = try {
                     hackyAllowRunningOnEdt {
-                        analyseWithReadAction(obj) {
-                            obj.getDiagnostics(KtDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
+                        runReadAction {
+                            analyseWithCustomToken(obj, AlwaysAccessibleValidityTokenFactory) {
+                                obj.getDiagnostics(KtDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
+                            }
                         }
                     }
-                } catch (e:  Throwable){
+                } catch (e: Throwable) {
                     e
                 }
                 value = getDiagnostics()
