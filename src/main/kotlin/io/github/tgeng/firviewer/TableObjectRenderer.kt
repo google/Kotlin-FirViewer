@@ -30,11 +30,11 @@ import org.jetbrains.kotlin.fir.utils.ArrayMap
 import org.jetbrains.kotlin.fir.utils.AttributeArrayOwner
 import org.jetbrains.kotlin.idea.frontend.api.ValidityTokenOwner
 import org.jetbrains.kotlin.idea.frontend.api.symbols.KtSymbol
+import org.jetbrains.kotlin.idea.frontend.api.symbols.markers.KtNamedSymbol
 import org.jetbrains.kotlin.idea.frontend.api.tokens.HackToForceAllowRunningAnalyzeOnEDT
 import org.jetbrains.kotlin.idea.frontend.api.tokens.hackyAllowRunningOnEdt
 import org.jetbrains.kotlin.idea.frontend.api.types.KtType
 import org.jetbrains.kotlin.psi.KtDeclaration
-import org.jetbrains.kotlin.psi.stubs.KotlinClassStub
 import java.awt.Component
 import javax.swing.JComponent
 import javax.swing.JTable
@@ -79,6 +79,7 @@ object TableObjectRenderer : TableCellRenderer {
             is KtDeclaration -> label(value.text.takeWhile { it != '\n' })
             is PsiElement -> label(value.text, multiline = true)
             is KtType -> label(value.asStringForDebugging())
+            is KtNamedSymbol -> label(value.name.asString())
             is KtSymbol -> label(value.psi?.text ?: "", multiline = true)
             is FirElement -> label(value.render(), multiline = true)
             is AttributeArrayOwner<*, *> -> {

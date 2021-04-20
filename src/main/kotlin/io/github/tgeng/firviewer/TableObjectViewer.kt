@@ -68,7 +68,16 @@ class TableObjectViewer(
             if (e.valueIsAdjusting) return@addListSelectionListener
             val row = selectedRow
             val name = _model.rows[row].name
+            val oldPath = if (index + 1 < state.selectedTablePath.size) {
+                state.selectedTablePath.subList(index + 1, state.selectedTablePath.size).toList()
+            } else {
+                emptyList()
+            }
             select(name.text)
+            for (name in oldPath) {
+                val objectViewer = state.objectViewers.last()
+                if (!objectViewer.select(name)) break
+            }
         }
         val mouseListener = object : MouseAdapter() {
             override fun mouseMoved(e: MouseEvent) {
