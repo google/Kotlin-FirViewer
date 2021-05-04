@@ -240,15 +240,15 @@ fun Any.traverseObjectProperty(
 fun Any.getTypeAndId(): String {
     return when {
         isData() -> this::class.simpleName
-            ?: this::class.toString()
+                ?: this::class.toString()
         else -> this::class.simpleName + " @" + Integer.toHexString(System.identityHashCode(this))
     }
 }
 
-fun Any.getValueAndId(): String {
+fun Any.getForMapKey(): String {
     return when {
         isData() -> toString()
-        else -> this::class.simpleName + " @" + Integer.toHexString(System.identityHashCode(this))
+        else -> this::class.simpleName + " @" + Integer.toHexString(System.identityHashCode(this)) + " | " + toString()
     }
 }
 

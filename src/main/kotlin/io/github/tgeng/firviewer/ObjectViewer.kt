@@ -21,30 +21,35 @@ import javax.swing.JComponent
 import javax.swing.JPanel
 
 class ObjectViewerUiState(
-    val tablePane: JPanel,
+        val tablePane: JPanel,
 ) {
     val objectViewers: MutableList<ObjectViewer> = mutableListOf()
     val selectedTablePath: MutableList<String> = mutableListOf()
 }
 
 abstract class ObjectViewer(
-    val project: Project,
-    private val state: ObjectViewerUiState,
-    private val index: Int,
-    private val ktFile: KtFile,
-    private val elementToAnalyze: KtElement?
+        val project: Project,
+        protected val state: ObjectViewerUiState,
+        protected val index: Int,
+        private val ktFile: KtFile,
+        private val elementToAnalyze: KtElement?
 ) {
     fun select(name: String): Boolean {
+        val oldPath = if (index + 1 < state.selectedTablePath.size) {
+            state.selectedTablePath.subList(index + 1, state.selectedTablePath.size).toList()
+        } else {
+            emptyList()
+        }
         val nextObject = selectAndGetObject(name) ?: return false
         val nextViewer =
-            createObjectViewer(
-                project,
-                nextObject,
-                state,
-                index + 1,
-                ktFile,
-                nextObject as? KtElement? ?: elementToAnalyze
-            )
+                createObjectViewer(
+                        project,
+                        nextObject,
+                        state,
+                        index + 1,
+                        ktFile,
+                        nextObject as? KtElement? ?: elementToAnalyze
+                )
 
         // Remove all tables below this one
         while (state.tablePane.components.size > index + 1) {
@@ -59,6 +64,10 @@ abstract class ObjectViewer(
         state.selectedTablePath.add(name)
         state.tablePane.revalidate()
         state.tablePane.repaint()
+        for (name in oldPath) {
+            val objectViewer = state.objectViewers.last()
+            if (!objectViewer.select(name)) break
+        }
         return true
     }
 
@@ -68,15 +77,15 @@ abstract class ObjectViewer(
 
     companion object {
         fun createObjectViewer(
-            project: Project,
-            obj: Any,
-            state: ObjectViewerUiState,
-            index: Int,
-            ktFile: KtFile,
-            elementToAnalyze: KtElement?
+                project: Project,
+                obj: Any,
+                state: ObjectViewerUiState,
+                index: Int,
+                ktFile: KtFile,
+                elementToAnalyze: KtElement?
         ): ObjectViewer =
-            when (obj) {
-                else -> TableObjectViewer(project, state, index, obj, ktFile, elementToAnalyze)
-            }
+                when (obj) {
+                    else -> TableObjectViewer(project, state, index, obj, ktFile, elementToAnalyze)
+                }
     }
 }

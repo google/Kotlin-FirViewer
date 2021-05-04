@@ -18,6 +18,9 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.ui.table.JBTable
+import org.jetbrains.kotlin.fir.declarations.FirControlFlowGraphOwner
+import org.jetbrains.kotlin.fir.resolve.dfa.cfg.CFGNode
+import org.jetbrains.kotlin.fir.resolve.dfa.dataFlowInfo
 import org.jetbrains.kotlin.fir.utils.AbstractArrayMapOwner
 import org.jetbrains.kotlin.fir.utils.ArrayMap
 import org.jetbrains.kotlin.fir.utils.TypeRegistry
@@ -58,7 +61,7 @@ class TableObjectViewer(
         elementToAnalyze: KtElement?
 ) :
         ObjectViewer(project, state, index, ktFile, elementToAnalyze) {
-    private val _model = ObjectTableModel(obj, state, elementToAnalyze)
+    private val _model = ObjectTableModel(obj, elementToAnalyze)
     private val table = FittingTable(_model).apply {
 
         setDefaultRenderer(Any::class.java, TableObjectRenderer)
@@ -68,16 +71,7 @@ class TableObjectViewer(
             if (e.valueIsAdjusting) return@addListSelectionListener
             val row = selectedRow
             val name = _model.rows[row].name
-            val oldPath = if (index + 1 < state.selectedTablePath.size) {
-                state.selectedTablePath.subList(index + 1, state.selectedTablePath.size).toList()
-            } else {
-                emptyList()
-            }
             select(name.text)
-            for (name in oldPath) {
-                val objectViewer = state.objectViewers.last()
-                if (!objectViewer.select(name)) break
-            }
         }
         val mouseListener = object : MouseAdapter() {
             override fun mouseMoved(e: MouseEvent) {
@@ -175,7 +169,6 @@ private class FittingTable(model: TableModel) : JBTable(model) {
 
 private class ObjectTableModel(
         val obj: Any,
-        val state: ObjectViewerUiState,
         private val elementToAnalyze: KtElement?
 ) :
         AbstractTableModel() {
@@ -187,28 +180,28 @@ private class ObjectTableModel(
             RowData(label(index.toString()), value?.getTypeAndId(), value)
         }
         is BooleanArray -> obj.mapIndexed { index, value ->
-            RowData(label(index.toString()), value?.getTypeAndId(), value)
+            RowData(label(index.toString()), value.getTypeAndId(), value)
         }
         is ByteArray -> obj.mapIndexed { index, value ->
-            RowData(label(index.toString()), value?.getTypeAndId(), value)
+            RowData(label(index.toString()), value.getTypeAndId(), value)
         }
         is ShortArray -> obj.mapIndexed { index, value ->
-            RowData(label(index.toString()), value?.getTypeAndId(), value)
+            RowData(label(index.toString()), value.getTypeAndId(), value)
         }
         is IntArray -> obj.mapIndexed { index, value ->
-            RowData(label(index.toString()), value?.getTypeAndId(), value)
+            RowData(label(index.toString()), value.getTypeAndId(), value)
         }
         is LongArray -> obj.mapIndexed { index, value ->
-            RowData(label(index.toString()), value?.getTypeAndId(), value)
+            RowData(label(index.toString()), value.getTypeAndId(), value)
         }
         is FloatArray -> obj.mapIndexed { index, value ->
-            RowData(label(index.toString()), value?.getTypeAndId(), value)
+            RowData(label(index.toString()), value.getTypeAndId(), value)
         }
         is DoubleArray -> obj.mapIndexed { index, value ->
-            RowData(label(index.toString()), value?.getTypeAndId(), value)
+            RowData(label(index.toString()), value.getTypeAndId(), value)
         }
         is CharArray -> obj.mapIndexed { index, value ->
-            RowData(label(index.toString()), value?.getTypeAndId(), value)
+            RowData(label(index.toString()), value.getTypeAndId(), value)
         }
         is Iterable<*> -> obj.mapIndexed { index, value ->
             RowData(label(index.toString()), value?.getTypeAndId(), value)
@@ -219,10 +212,11 @@ private class ObjectTableModel(
             }.toList()
         }
         is Map<*, *> -> obj.map { (k, v) ->
-            RowData(label(k?.getValueAndId() ?: ""), v?.getTypeAndId(), v)
+            RowData(label(k?.getForMapKey() ?: ""), v?.getTypeAndId(), v)
         }.sortedBy { it.name.text }
         is AbstractArrayMapOwner<*, *> -> getArrayMapOwnerBasedRows().sortedBy { it.name.text }
         is PsiElement, is KtType, is KtSymbol -> (getKtAnalysisSessionBasedRows() + getObjectPropertyMembersBasedRows() + getOtherExtensionProperties()).sortedBy { it.name.text }
+        is CFGNode<*> -> (getObjectPropertyMembersBasedRows() + getCfgNodeProperties(obj)).sortedBy { it.name.text }
         else -> getObjectPropertyMembersBasedRows().sortedBy { it.name.text }
     }
 
@@ -253,11 +247,11 @@ private class ObjectTableModel(
             ) {
                 return@traverseObjectProperty
             }
-            result += RowData(label(name), value?.getTypeAndId(), value, valueProvider)
+            result += RowData(label(name), value.getTypeAndId(), value, valueProvider)
         }
         result
     } catch (e: Throwable) {
-        listOf(RowData(label("<error>"), e?.getTypeAndId(), e))
+        listOf(RowData(label("<error>"), e.getTypeAndId(), e))
     }
 
     @OptIn(HackToForceAllowRunningAnalyzeOnEDT::class)
@@ -282,6 +276,18 @@ private class ObjectTableModel(
                 }
             }
         }
+    }
+
+    @OptIn(HackToForceAllowRunningAnalyzeOnEDT::class)
+    private fun getCfgNodeProperties(node: CFGNode<*>): List<RowData> {
+        var cfg = node.owner
+        while (true) {
+            cfg = cfg.owner ?: break
+        }
+        val dataFlowInfos = (cfg.declaration as? FirControlFlowGraphOwner)?.controlFlowGraphReference?.dataFlowInfo
+                ?: return emptyList()
+        val flow = dataFlowInfos.flowOnNodes[node] ?: return emptyList()
+        return listOf(RowData(label("flow", icon = AllIcons.Nodes.Favorite), flow.getTypeAndId(), flow))
     }
 
     @OptIn(HackToForceAllowRunningAnalyzeOnEDT::class)

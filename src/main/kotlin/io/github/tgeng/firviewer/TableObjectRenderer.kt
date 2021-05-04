@@ -36,6 +36,7 @@ import org.jetbrains.kotlin.idea.frontend.api.tokens.hackyAllowRunningOnEdt
 import org.jetbrains.kotlin.idea.frontend.api.types.KtType
 import org.jetbrains.kotlin.psi.KtDeclaration
 import java.awt.Component
+import javax.swing.Icon
 import javax.swing.JComponent
 import javax.swing.JTable
 import javax.swing.table.TableCellRenderer
@@ -45,51 +46,17 @@ import kotlin.reflect.jvm.isAccessible
 @OptIn(HackToForceAllowRunningAnalyzeOnEDT::class)
 object TableObjectRenderer : TableCellRenderer {
     override fun getTableCellRendererComponent(
-        table: JTable,
-        value: Any?,
-        isSelected: Boolean,
-        hasFocus: Boolean,
-        row: Int,
-        column: Int
+            table: JTable,
+            value: Any?,
+            isSelected: Boolean,
+            hasFocus: Boolean,
+            row: Int,
+            column: Int
     ): Component = hackyAllowRunningOnEdt {
         if (value is ValidityTokenOwner && !value.token.isValid() || value is PsiElement && !value.isValid) {
             return@hackyAllowRunningOnEdt label(value.getTypeAndId() + " is no longer valid", italic = true)
         }
-        when (value) {
-            is JComponent -> value
-            is Collection<*> -> label("size = " + value.size)
-            is Map<*, *> -> label("size =" + value.size)
-            is Array<*> -> label("size = " + value.size)
-            is BooleanArray -> label("size = " + value.size)
-            is ByteArray -> label("size = " + value.size)
-            is CharArray -> label(String(value))
-            is ShortArray -> label("size = " + value.size)
-            is IntArray -> label("size = " + value.size)
-            is LongArray -> label("size = " + value.size)
-            is DoubleArray -> label("size = " + value.size)
-            is FloatArray -> label("size = " + value.size)
-            is CFGNode<*> -> label(value.render())
-            is ItemPresentation -> label(value.presentableText ?: "")
-            is SingleRootFileViewProvider -> label(value.virtualFile.toString())
-            is ObjectStubTree<*>, is StubElement<*>, is ModuleWithDependenciesScope -> label(
-                value.toString().replace(' ', '\n'), multiline = true
-            )
-            is Project -> label("Project: " + value.name)
-            is PsiFile -> label(value.name)
-            is KtDeclaration -> label(value.text.takeWhile { it != '\n' })
-            is PsiElement -> label(value.text, multiline = true)
-            is KtType -> label(value.asStringForDebugging())
-            is KtNamedSymbol -> label(value.name.asString())
-            is KtSymbol -> label(value.psi?.text ?: "", multiline = true)
-            is FirElement -> label(value.render(), multiline = true)
-            is AttributeArrayOwner<*, *> -> {
-                val arrayMap =
-                    value::class.memberProperties.first { it.name == "arrayMap" }.apply { isAccessible = true }
-                        .call(value) as ArrayMap<*>
-                label("${arrayMap.size} attributes")
-            }
-            else -> label(value.toString())
-        }.apply {
+        render(value).apply {
             if (table.isRowSelected(row)) {
                 isOpaque = true
                 background = table.selectionBackground
@@ -97,6 +64,64 @@ object TableObjectRenderer : TableCellRenderer {
                 isOpaque = false
                 background = table.background
             }
+        }
+    }
+
+    private fun render(value: Any?, renderBracket: Boolean = false): JComponent {
+        fun myLabel(
+                s: String,
+                bold: Boolean = false,
+                italic: Boolean = false,
+                multiline: Boolean = false,
+                icon: Icon? = null,
+                tooltipText: String? = null
+        ) = label(if (renderBracket) "{ $s }" else s, bold, italic, multiline, icon, tooltipText)
+        return when (value) {
+            is JComponent -> value
+            is Collection<*> -> {
+                if (value.size == 1) {
+                    render(value.single(), renderBracket = true)
+                } else {
+                    myLabel("size = " + value.size)
+                }
+            }
+            is Map<*, *> -> {
+                if (value.size == 1) {
+                    render(value.keys.single()) + label("->") + render(value.values.single())
+                } else {
+                    myLabel("size =" + value.size)
+                }
+            }
+            is Array<*> -> myLabel("size = " + value.size)
+            is BooleanArray -> myLabel("size = " + value.size)
+            is ByteArray -> myLabel("size = " + value.size)
+            is CharArray -> myLabel(String(value))
+            is ShortArray -> myLabel("size = " + value.size)
+            is IntArray -> myLabel("size = " + value.size)
+            is LongArray -> myLabel("size = " + value.size)
+            is DoubleArray -> myLabel("size = " + value.size)
+            is FloatArray -> myLabel("size = " + value.size)
+            is CFGNode<*> -> myLabel(value.render())
+            is ItemPresentation -> myLabel(value.presentableText ?: "")
+            is SingleRootFileViewProvider -> myLabel(value.virtualFile.toString())
+            is ObjectStubTree<*>, is StubElement<*>, is ModuleWithDependenciesScope -> myLabel(
+                    value.toString().replace(' ', '\n'), multiline = true
+            )
+            is Project -> myLabel("Project: " + value.name)
+            is PsiFile -> myLabel(value.name)
+            is KtDeclaration -> myLabel(value.text.takeWhile { it != '\n' })
+            is PsiElement -> myLabel(value.text, multiline = true)
+            is KtType -> myLabel(value.asStringForDebugging())
+            is KtNamedSymbol -> myLabel(value.name.asString())
+            is KtSymbol -> myLabel(value.psi?.text ?: "", multiline = true)
+            is FirElement -> myLabel(value.render(), multiline = true)
+            is AttributeArrayOwner<*, *> -> {
+                val arrayMap =
+                        value::class.memberProperties.first { it.name == "arrayMap" }.apply { isAccessible = true }
+                                .call(value) as ArrayMap<*>
+                myLabel("${arrayMap.size} attributes")
+            }
+            else -> myLabel(value.toString())
         }
     }
 }
