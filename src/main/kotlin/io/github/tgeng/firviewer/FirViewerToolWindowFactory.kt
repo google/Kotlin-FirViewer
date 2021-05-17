@@ -30,7 +30,7 @@ import com.intellij.psi.PsiManager
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirPureAbstractElement
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
-import org.jetbrains.kotlin.idea.fir.low.level.api.api.getFirFile
+import org.jetbrains.kotlin.idea.fir.low.level.api.api.getOrBuildFirFile
 import org.jetbrains.kotlin.idea.fir.low.level.api.api.getResolveState
 import org.jetbrains.kotlin.psi.KtFile
 import java.awt.event.FocusAdapter
@@ -74,7 +74,7 @@ class FirViewerToolWindowFactory : ToolWindowFactory, DumbAware {
             val treeModel = ObjectTreeModel(
                 ktFile,
                 FirPureAbstractElement::class,
-                { it.getFirFile(it.getResolveState()) }) { consumer ->
+                { it.getOrBuildFirFile(it.getResolveState()) }) { consumer ->
                 acceptChildren(object : FirVisitorVoid() {
                     override fun visitElement(element: FirElement) {
                         if (element is FirPureAbstractElement) consumer(element)
