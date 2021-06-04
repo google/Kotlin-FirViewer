@@ -164,7 +164,8 @@ val psiElementMethods = PsiElement::class.java.methods.map { it.name }.toSet() -
         "getTextLength",
         "getText",
         "getResolveScope",
-        "getUseScope"
+        "getUseScope",
+        "getReferences",
 )
 
 @OptIn(HackToForceAllowRunningAnalyzeOnEDT::class)

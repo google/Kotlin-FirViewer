@@ -26,6 +26,8 @@ import org.jetbrains.kotlin.fir.utils.ArrayMap
 import org.jetbrains.kotlin.fir.utils.TypeRegistry
 import org.jetbrains.kotlin.idea.caches.project.IdeaModuleInfo
 import org.jetbrains.kotlin.idea.caches.project.getModuleInfos
+import org.jetbrains.kotlin.idea.fir.low.level.api.api.FirModuleResolveState
+import org.jetbrains.kotlin.idea.fir.low.level.api.api.getOrBuildFir
 import org.jetbrains.kotlin.idea.fir.low.level.api.api.getResolveState
 import org.jetbrains.kotlin.idea.frontend.api.*
 import org.jetbrains.kotlin.idea.frontend.api.components.KtDiagnosticCheckerFilter
@@ -34,6 +36,7 @@ import org.jetbrains.kotlin.idea.frontend.api.tokens.AlwaysAccessibleValidityTok
 import org.jetbrains.kotlin.idea.frontend.api.tokens.HackToForceAllowRunningAnalyzeOnEDT
 import org.jetbrains.kotlin.idea.frontend.api.tokens.hackyAllowRunningOnEdt
 import org.jetbrains.kotlin.idea.frontend.api.types.KtType
+import org.jetbrains.kotlin.idea.references.KtFirReference
 import org.jetbrains.kotlin.idea.util.application.runReadAction
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtFile
@@ -47,6 +50,7 @@ import javax.swing.table.TableCellRenderer
 import javax.swing.table.TableModel
 import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
+import kotlin.reflect.KProperty1
 import kotlin.reflect.KVisibility
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.isAccessible
@@ -215,7 +219,7 @@ private class ObjectTableModel(
             RowData(label(k?.getForMapKey() ?: ""), v?.getTypeAndId(), v)
         }.sortedBy { it.name.text }
         is AbstractArrayMapOwner<*, *> -> getArrayMapOwnerBasedRows().sortedBy { it.name.text }
-        is PsiElement, is KtType, is KtSymbol -> (getKtAnalysisSessionBasedRows() + getObjectPropertyMembersBasedRows() + getOtherExtensionProperties()).sortedBy { it.name.text }
+        is PsiElement, is KtType, is KtSymbol, is KtFirReference -> (getKtAnalysisSessionBasedRows() + getObjectPropertyMembersBasedRows() + getOtherExtensionProperties()).sortedBy { it.name.text }
         is CFGNode<*> -> (getObjectPropertyMembersBasedRows() + getCfgNodeProperties(obj)).sortedBy { it.name.text }
         else -> getObjectPropertyMembersBasedRows().sortedBy { it.name.text }
     }
@@ -337,6 +341,21 @@ private class ObjectTableModel(
                 }
                 value = getDiagnostics()
                 result += RowData(label("getDiagnostics"), value.getTypeAndId(), value, ::getDiagnostics)
+
+                fun getOrBuildFir() = try {
+                    hackyAllowRunningOnEdt {
+                        runReadAction {
+                            analyseWithCustomToken(obj, AlwaysAccessibleValidityTokenFactory) {
+                                val property = this::class.memberProperties.first { it.name == "firResolveState" } as KProperty1<KtAnalysisSession, FirModuleResolveState>
+                                obj.getOrBuildFir(property.get(this))
+                            }
+                        }
+                    }
+                } catch (e: Throwable) {
+                    e
+                }
+                value = getOrBuildFir()
+                result += RowData(label("getOrBuildFir"), value.getTypeAndId(), value, ::getOrBuildFir)
 
                 result += obj::getModuleInfos.toRowData()
                 result += obj::getResolveState.toRowData()
