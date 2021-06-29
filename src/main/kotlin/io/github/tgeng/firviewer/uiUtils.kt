@@ -29,6 +29,7 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.scale.JBUIScale
 import org.jetbrains.kotlin.fir.FirPsiSourceElement
 import org.jetbrains.kotlin.fir.FirPureAbstractElement
+import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.resolve.dfa.cfg.CFGNode
@@ -70,7 +71,7 @@ fun label(
     font = font.deriveFont((if (bold) Font.BOLD else Font.PLAIN) + if (italic) Font.ITALIC else Font.PLAIN)
 }
 
-fun render(e: FirPureAbstractElement) = JBLabel(e.render())
+fun render(e: FirElement) = JBLabel(e.render())
 fun type(e: TreeNode<*>): JComponent {
     val nameAndType = label(
             if (e.name == "" || e.name.startsWith('<')) {
@@ -112,7 +113,7 @@ fun highlightInEditor(obj: Any, project: Project) {
     editor.markupModel.removeAllHighlighters()
     val (vf, startOffset, endOffset) = when (obj) {
         is FirPureAbstractElement -> obj.source?.let {
-            val source = it as? FirPsiSourceElement<*> ?: return@let null
+            val source = it as? FirPsiSourceElement ?: return@let null
             FileLocation(source.psi.containingFile.virtualFile, it.startOffset, it.endOffset)
         }
         is PsiElement -> obj.textRange?.let {
@@ -123,7 +124,7 @@ fun highlightInEditor(obj: Any, project: Project) {
             )
         }
         is CFGNode<*> -> obj.fir.source?.let {
-            val source = it as? FirPsiSourceElement<*> ?: return@let null
+            val source = it as? FirPsiSourceElement ?: return@let null
             FileLocation(source.psi.containingFile.virtualFile, it.startOffset, it.endOffset)
         }
         else -> null

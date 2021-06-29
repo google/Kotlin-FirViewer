@@ -207,10 +207,10 @@ private class ObjectTableModel(
         is CharArray -> obj.mapIndexed { index, value ->
             RowData(label(index.toString()), value.getTypeAndId(), value)
         }
+        is AbstractArrayMapOwner<*, *> -> getArrayMapOwnerBasedRows().sortedBy { it.name.text }
         is Iterable<*> -> obj.mapIndexed { index, value ->
             RowData(label(index.toString()), value?.getTypeAndId(), value)
         }
-        is AbstractArrayMapOwner<*, *> -> getArrayMapOwnerBasedRows().sortedBy { it.name.text }
         is Sequence<*> -> hackyAllowRunningOnEdt {
             obj.mapIndexed { index, value ->
                 RowData(label(index.toString()), value?.getTypeAndId(), value)

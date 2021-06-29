@@ -25,9 +25,15 @@ This plugin depends on the Kotlin plugin in FIR mode. Since Kotlin FIR mode is c
 
 1. Clone https://github.com/JetBrains/kotlin.git
    
-2. Run `./gradlew installIdeArtifacts :prepare:ide-plugin-dependencies:kotlin-dist-for-ide:install -Ppublish.ide.plugin.dependencies=true`
-   to install needed dependencies in the local maven repo.
+2. Clone https://github.com/JetBrains/intellij-kotlin.git and put it inside <kotlin-repo>/kotlin-ide
 
-3. `cd` into FirViewer project and build with `./gradlew buildPlugin`
+3. Open kotlin-ide project in IntelliJ and add an artifacts bulding module `kotlin.fir` and its dependency.
+   
+4. Run `Install compiler-for-ide jars` to install needed dependencies in the local maven repo.
 
-6. The resulted build is located at `build/distributions`
+5. Build the artifact created in step 3 and copy the artifact to the project root of `FirViewer`. Make sure the copied
+   artifact is named `kotlin.fir.jar`.
+
+6. `cd` into FirViewer project and build FirViewer with `./gradlew buildPlugin`
+
+7. The resulted plugin file is located at `build/distributions`
