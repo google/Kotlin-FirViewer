@@ -9,8 +9,7 @@ A small tool to inspect Kotlin FIR structure.
 Note: This plugin **only** works with Kotlin plugin in FIR mode (Set `idea.fir.plugin=true` in [gradle.properties](https://github.com/JetBrains/kotlin/blob/master/gradle.properties)).
 
 1. Go to the [release](https://github.com/google/Kotlin-FirViewer/releases) page and download the most recent release.
-2. Launch the dev IntelliJ instance from the [Kotlin project](https://github.com/JetBrains/kotlin) with target `IDEA (No ProcessCanceledException)`
-   ![image](https://user-images.githubusercontent.com/29584386/107079611-f35a2200-67a4-11eb-9f53-716265e2e70f.png)
+2. Launch IntelliJ with FIR plugin.
 3. Open plugins setting. Click the gear icon on top, select "Install plugin from disk...", and pick the downloaded zip file and click OK.
 
 ## How to use?
@@ -24,17 +23,11 @@ The plugin provides three tool windows
 
 This plugin depends on the Kotlin plugin in FIR mode. Since Kotlin FIR mode is currently not released yet, you will need a local build of the Kotlin IDE plugin. Also, since the master branch of Kotlin project is built with non-released version of Kotlin compiler, this plugin will need to be compiled with the same (or more recent) version of Kotlin compiler (explained below).
 
-1. Clone https://github.com/JetBrains/kotlin.git, open `<project>/gradle.properties`, and add (or uncomment)
-   `idea.fir.plugin=true`. Then `cd` into the Kotlin project
+1. Clone https://github.com/JetBrains/kotlin.git
+   
+2. Run `./gradlew installIdeArtifacts :prepare:ide-plugin-dependencies:kotlin-dist-for-ide:install -Ppublish.ide.plugin.dependencies=true`
+   to install needed dependencies in the local maven repo.
 
-2. `./gradlew install` to install the updated Kotlin compiler and dependencies to maven local.
-
-3. `./gradlew ideaPlugin` to build the Kotlin plugin.
-
-4. Copy the built plugin at `dist/artifacts/ideaPlugin/Kotlin/lib/kotlin-plugin.jar` to the project root of FirViewer.
-
-   Note: you may need to update the version of `org.jetbrains.kotlin.jvm` in `build.gradle` to match the version built in step 2. To figure out the version, do `ls <maven local>/org/jetbrains/kotlin/jvm/org.jetbrains.kotlin.jvm.gradle.plugin`
-
-5. `cd` into FirViewer project and build with `./gradlew buildPlugin`
+3. `cd` into FirViewer project and build with `./gradlew buildPlugin`
 
 6. The resulted build is located at `build/distributions`

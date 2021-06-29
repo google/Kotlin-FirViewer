@@ -210,6 +210,7 @@ private class ObjectTableModel(
         is Iterable<*> -> obj.mapIndexed { index, value ->
             RowData(label(index.toString()), value?.getTypeAndId(), value)
         }
+        is AbstractArrayMapOwner<*, *> -> getArrayMapOwnerBasedRows().sortedBy { it.name.text }
         is Sequence<*> -> hackyAllowRunningOnEdt {
             obj.mapIndexed { index, value ->
                 RowData(label(index.toString()), value?.getTypeAndId(), value)
@@ -218,7 +219,6 @@ private class ObjectTableModel(
         is Map<*, *> -> obj.map { (k, v) ->
             RowData(label(k?.getForMapKey() ?: ""), v?.getTypeAndId(), v)
         }.sortedBy { it.name.text }
-        is AbstractArrayMapOwner<*, *> -> getArrayMapOwnerBasedRows().sortedBy { it.name.text }
         is PsiElement, is KtType, is KtSymbol, is KtFirReference -> (getKtAnalysisSessionBasedRows() + getObjectPropertyMembersBasedRows() + getOtherExtensionProperties()).sortedBy { it.name.text }
         is CFGNode<*> -> (getObjectPropertyMembersBasedRows() + getCfgNodeProperties(obj)).sortedBy { it.name.text }
         else -> getObjectPropertyMembersBasedRows().sortedBy { it.name.text }
