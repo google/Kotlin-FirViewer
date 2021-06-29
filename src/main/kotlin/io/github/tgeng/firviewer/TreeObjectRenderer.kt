@@ -92,7 +92,7 @@ class TreeObjectRenderer : TreeCellRenderer {
             is FirTypeProjection -> type(node) + render(e)
             is FirTypeRef -> type(node) + render(e)
             is FirProperty -> type(node) + label(e.name.asString(), icon = AllIcons.Nodes.Property)
-            is FirVariable<*> -> type(node) + label(e.name.asString(), icon = AllIcons.Nodes.Variable)
+            is FirVariable -> type(node) + label(e.name.asString(), icon = AllIcons.Nodes.Variable)
             is FirVariableAssignment -> type(node) + render(e)
             is FirWhenBranch -> type(node) + render(e)
             // is FirConstructedClassTypeParameterRef,
