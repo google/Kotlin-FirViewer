@@ -311,8 +311,8 @@ private class ObjectTableModel(
                     e
                 }
 
-                var value = getScopeContextForPosition()
-                result += RowData(label("scopeAtPosition"), value.getTypeAndId(), value, ::getScopeContextForPosition)
+                var value: Any? = getScopeContextForPosition()
+                result += RowData(label("scopeAtPosition"), value?.getTypeAndId(), value, ::getScopeContextForPosition)
 
                 fun collectDiagnosticsForFile() = try {
                     hackyAllowRunningOnEdt {
@@ -326,7 +326,7 @@ private class ObjectTableModel(
                     e
                 }
                 value = collectDiagnosticsForFile()
-                result += RowData(label("collectDiagnosticsForFile"), value.getTypeAndId(), value, ::collectDiagnosticsForFile)
+                result += RowData(label("collectDiagnosticsForFile"), value?.getTypeAndId(), value, ::collectDiagnosticsForFile)
 
                 fun getDiagnostics() = try {
                     hackyAllowRunningOnEdt {
@@ -340,7 +340,7 @@ private class ObjectTableModel(
                     e
                 }
                 value = getDiagnostics()
-                result += RowData(label("getDiagnostics"), value.getTypeAndId(), value, ::getDiagnostics)
+                result += RowData(label("getDiagnostics"), value?.getTypeAndId(), value, ::getDiagnostics)
 
                 fun getOrBuildFir() = try {
                     hackyAllowRunningOnEdt {
@@ -355,7 +355,7 @@ private class ObjectTableModel(
                     e
                 }
                 value = getOrBuildFir()
-                result += RowData(label("getOrBuildFir"), value.getTypeAndId(), value, ::getOrBuildFir)
+                result += RowData(label("getOrBuildFir"), value?.getTypeAndId(), value, ::getOrBuildFir)
 
                 result += obj::getModuleInfos.toRowData()
                 result += obj::getResolveState.toRowData()

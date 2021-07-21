@@ -24,12 +24,12 @@ The plugin provides three tool windows
 This plugin depends on the Kotlin plugin in FIR mode. Since Kotlin FIR mode is currently not released yet, you will need a local build of the Kotlin IDE plugin. Also, since the master branch of Kotlin project is built with non-released version of Kotlin compiler, this plugin will need to be compiled with the same (or more recent) version of Kotlin compiler (explained below).
 
 1. Clone https://github.com/JetBrains/kotlin.git
-   
+
 2. Clone https://github.com/JetBrains/intellij-kotlin.git and put it inside <kotlin-repo>/kotlin-ide
 
 3. Open kotlin-ide project in IntelliJ and add an artifacts bulding module `kotlin.fir` and its dependency.
-   
-4. Run `Install compiler-for-ide jars` to install needed dependencies in the local maven repo.
+
+4. Run `./gradlew install` in the Kotlin repo to install needed dependencies in the local maven repo.
 
 5. Build the artifact created in step 3 and copy the artifact to the project root of `FirViewer`. Make sure the copied
    artifact is named `kotlin.fir.jar`.
