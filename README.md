@@ -6,7 +6,7 @@ A small tool to inspect Kotlin FIR structure.
 
 ## Installation
 
-Note: This plugin **only** works with Kotlin plugin in FIR mode (Set `idea.fir.plugin=true` in [gradle.properties](https://github.com/JetBrains/kotlin/blob/master/gradle.properties)).
+Note: This plugin **only** works with Kotlin plugin in FIR mode.
 
 1. Go to the [release](https://github.com/google/Kotlin-FirViewer/releases) page and download the most recent release.
 2. Launch IntelliJ with FIR plugin.
