@@ -24,7 +24,6 @@ import org.jetbrains.kotlin.fir.resolve.dfa.dataFlowInfo
 import org.jetbrains.kotlin.fir.utils.AbstractArrayMapOwner
 import org.jetbrains.kotlin.fir.utils.ArrayMap
 import org.jetbrains.kotlin.fir.utils.TypeRegistry
-import org.jetbrains.kotlin.idea.caches.project.IdeaModuleInfo
 import org.jetbrains.kotlin.idea.caches.project.getModuleInfos
 import org.jetbrains.kotlin.analysis.low.level.api.fir.api.FirModuleResolveState
 import org.jetbrains.kotlin.analysis.low.level.api.fir.api.getOrBuildFir
@@ -36,6 +35,7 @@ import org.jetbrains.kotlin.analysis.api.tokens.AlwaysAccessibleValidityTokenFac
 import org.jetbrains.kotlin.analysis.api.tokens.HackToForceAllowRunningAnalyzeOnEDT
 import org.jetbrains.kotlin.analysis.api.tokens.hackyAllowRunningOnEdt
 import org.jetbrains.kotlin.analysis.api.types.KtType
+import org.jetbrains.kotlin.analysis.project.structure.KtModule
 import org.jetbrains.kotlin.idea.references.KtFirReference
 import org.jetbrains.kotlin.idea.util.application.runReadAction
 import org.jetbrains.kotlin.psi.KtElement
@@ -360,7 +360,7 @@ private class ObjectTableModel(
                 result += obj::getModuleInfos.toRowData()
                 result += obj::getResolveState.toRowData()
             }
-            is IdeaModuleInfo -> {
+            is KtModule -> {
                 obj::getResolveState.toRowData()
             }
         }
