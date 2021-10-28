@@ -27,7 +27,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.scale.JBUIScale
-import org.jetbrains.kotlin.fir.FirPsiSourceElement
+import org.jetbrains.kotlin.KtPsiSourceElement
 import org.jetbrains.kotlin.fir.FirPureAbstractElement
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
@@ -113,7 +113,7 @@ fun highlightInEditor(obj: Any, project: Project) {
     editor.markupModel.removeAllHighlighters()
     val (vf, startOffset, endOffset) = when (obj) {
         is FirPureAbstractElement -> obj.source?.let {
-            val source = it as? FirPsiSourceElement ?: return@let null
+            val source = it as? KtPsiSourceElement ?: return@let null
             FileLocation(source.psi.containingFile.virtualFile, it.startOffset, it.endOffset)
         }
         is PsiElement -> obj.textRange?.let {
@@ -124,7 +124,7 @@ fun highlightInEditor(obj: Any, project: Project) {
             )
         }
         is CFGNode<*> -> obj.fir.source?.let {
-            val source = it as? FirPsiSourceElement ?: return@let null
+            val source = it as? KtPsiSourceElement ?: return@let null
             FileLocation(source.psi.containingFile.virtualFile, it.startOffset, it.endOffset)
         }
         else -> null
