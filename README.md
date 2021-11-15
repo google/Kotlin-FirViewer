@@ -27,7 +27,9 @@ This plugin depends on the Kotlin plugin in FIR mode. Since Kotlin FIR mode is c
 
 2. Clone https://github.com/JetBrains/intellij-community.git and put it inside <kotlin-repo>/intellij
 
-3. Open intellij-community= project in IntelliJ and add an artifacts bulding module `kotlin.fir` and its dependency.
+3. Open intellij-community= project in IntelliJ and add an artifact bulding module `kotlin.fir` and its dependency. See the following screenshot
+   ![image](https://user-images.githubusercontent.com/29584386/141865850-f31c4444-d024-4c2e-a500-8376cc072cbb.png)
+   ![image](https://user-images.githubusercontent.com/29584386/141865919-fdadd4ef-2d68-4861-9475-cb4de0acee51.png)
 
 4. Run `./gradlew install` in the Kotlin repo to install needed dependencies in the local maven repo.
 
