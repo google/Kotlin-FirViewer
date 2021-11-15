@@ -36,6 +36,7 @@ This plugin depends on the Kotlin plugin in FIR mode. Since Kotlin FIR mode is c
 5. Build the artifact created in step 3 and copy the artifact to the project root of `FirViewer`. Make sure the copied
    artifact is named `kotlin.fir.jar`.
 
-6. `cd` into FirViewer project and build FirViewer with `./gradlew buildPlugin`
+6. `cd` into FirViewer project and build FirViewer with `./gradlew buildPlugin`. Note that you may want to bump up the plugin version in `build.gradle` in order to create a new    release.
 
-7. The resulted plugin file is located at `build/distributions`
+7. The resulted plugin file is located at `build/distributions`.
+8. If everything works fine. Please consider committing your change, pushing upstream, and publishing a new release so others can use it.
