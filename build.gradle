@@ -5,7 +5,7 @@ plugins {
 }
 
 group 'org.example'
-version '1.2.25'
+version '1.2.26'
 
 repositories {
     mavenCentral()
@@ -25,6 +25,7 @@ dependencies {
 intellij {
     pluginName = 'Kotlin FirViewer'
     version = '2021.2'
+    updateSinceUntilBuild = false
 }
 
 test {
