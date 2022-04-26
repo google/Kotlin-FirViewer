@@ -14,7 +14,6 @@ import com.kitfox.svg.SVGUniverse
 import org.jetbrains.kotlin.fir.resolve.dfa.cfg.CFGNode
 import org.jetbrains.kotlin.fir.resolve.dfa.cfg.FirControlFlowGraphRenderVisitor
 import org.jetbrains.kotlin.fir.resolve.dfa.cfg.render
-import org.jetbrains.kotlin.idea.debugger.readAction
 import org.jetbrains.kotlin.analysis.low.level.api.fir.api.getOrBuildFirFile
 import org.jetbrains.kotlin.analysis.low.level.api.fir.api.getResolveState
 import org.jetbrains.kotlin.psi.KtFile
@@ -37,8 +36,8 @@ class CfgRenderService(private val project: Project) {
 
     private fun getGraphString(vf: VirtualFile): String {
         val sb = StringBuilder()
-        ApplicationManager.getApplication().readAction {
-            val ktFile = PsiManager.getInstance(project).findFile(vf) as? KtFile ?: return@readAction
+        ApplicationManager.getApplication().runReadAction {
+            val ktFile = PsiManager.getInstance(project).findFile(vf) as? KtFile ?: return@runReadAction
             val firFile = ktFile.getOrBuildFirFile(ktFile.getResolveState())
             firFile.accept(FirControlFlowGraphRenderVisitor(sb))
         }

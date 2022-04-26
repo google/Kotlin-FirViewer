@@ -21,11 +21,11 @@ import com.intellij.ui.table.JBTable
 import org.jetbrains.kotlin.fir.declarations.FirControlFlowGraphOwner
 import org.jetbrains.kotlin.fir.resolve.dfa.cfg.CFGNode
 import org.jetbrains.kotlin.fir.resolve.dfa.dataFlowInfo
-import org.jetbrains.kotlin.fir.utils.AbstractArrayMapOwner
-import org.jetbrains.kotlin.fir.utils.ArrayMap
-import org.jetbrains.kotlin.fir.utils.TypeRegistry
+import org.jetbrains.kotlin.util.AbstractArrayMapOwner
+import org.jetbrains.kotlin.util.ArrayMap
+import org.jetbrains.kotlin.util.TypeRegistry
 import org.jetbrains.kotlin.idea.caches.project.getModuleInfos
-import org.jetbrains.kotlin.analysis.low.level.api.fir.api.FirModuleResolveState
+import org.jetbrains.kotlin.analysis.low.level.api.fir.api.LLFirModuleResolveState
 import org.jetbrains.kotlin.analysis.low.level.api.fir.api.getOrBuildFir
 import org.jetbrains.kotlin.analysis.low.level.api.fir.api.getResolveState
 import org.jetbrains.kotlin.analysis.api.*
@@ -346,7 +346,7 @@ private class ObjectTableModel(
                     hackyAllowRunningOnEdt {
                         runReadAction {
                             analyseWithCustomToken(obj, AlwaysAccessibleValidityTokenFactory) {
-                                val property = this::class.memberProperties.first { it.name == "firResolveState" } as KProperty1<KtAnalysisSession, FirModuleResolveState>
+                                val property = this::class.memberProperties.first { it.name == "firResolveState" } as KProperty1<KtAnalysisSession, LLFirModuleResolveState>
                                 obj.getOrBuildFir(property.get(this))
                             }
                         }

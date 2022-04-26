@@ -26,8 +26,8 @@ import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.resolve.dfa.cfg.CFGNode
 import org.jetbrains.kotlin.fir.resolve.dfa.cfg.render
-import org.jetbrains.kotlin.fir.utils.ArrayMap
-import org.jetbrains.kotlin.fir.utils.AttributeArrayOwner
+import org.jetbrains.kotlin.util.ArrayMap
+import org.jetbrains.kotlin.util.AttributeArrayOwner
 import org.jetbrains.kotlin.analysis.api.ValidityTokenOwner
 import org.jetbrains.kotlin.analysis.api.symbols.KtSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.markers.KtNamedSymbol

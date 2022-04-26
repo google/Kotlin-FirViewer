@@ -19,7 +19,7 @@ import com.intellij.psi.PsiManager
 import org.jetbrains.kotlin.fir.declarations.FirControlFlowGraphOwner
 import org.jetbrains.kotlin.fir.resolve.dfa.cfg.CFGNode
 import org.jetbrains.kotlin.fir.resolve.dfa.controlFlowGraph
-import org.jetbrains.kotlin.analysis.low.level.api.fir.api.FirModuleResolveState
+import org.jetbrains.kotlin.analysis.low.level.api.fir.api.LLFirModuleResolveState
 import org.jetbrains.kotlin.analysis.low.level.api.fir.api.getOrBuildFirSafe
 import org.jetbrains.kotlin.analysis.low.level.api.fir.api.getResolveState
 import org.jetbrains.kotlin.psi.KtElement
@@ -133,7 +133,7 @@ class CfgViewToolWindowFactory : ToolWindowFactory {
         return CfgRenderService.getInstance(this).getGraphKey(vf, topLevelCfgEnterNode)
     }
 
-    private fun KtElement.getTopLevelCfgEnterNode(resolveState: FirModuleResolveState): CFGNode<*>? {
+    private fun KtElement.getTopLevelCfgEnterNode(resolveState: LLFirModuleResolveState): CFGNode<*>? {
         val cfg = getOrBuildFirSafe<FirControlFlowGraphOwner>(resolveState)?.controlFlowGraphReference?.controlFlowGraph
             ?: return null
         if (cfg.owner != null) return null // Not a top level CFG
