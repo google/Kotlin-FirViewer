@@ -25,9 +25,9 @@ import org.jetbrains.kotlin.util.AbstractArrayMapOwner
 import org.jetbrains.kotlin.util.ArrayMap
 import org.jetbrains.kotlin.util.TypeRegistry
 import org.jetbrains.kotlin.idea.caches.project.getModuleInfos
-import org.jetbrains.kotlin.analysis.low.level.api.fir.api.LLFirModuleResolveState
+import org.jetbrains.kotlin.analysis.low.level.api.fir.api.LLFirResolveSession
 import org.jetbrains.kotlin.analysis.low.level.api.fir.api.getOrBuildFir
-import org.jetbrains.kotlin.analysis.low.level.api.fir.api.getResolveState
+import org.jetbrains.kotlin.analysis.low.level.api.fir.api.getFirResolveSession
 import org.jetbrains.kotlin.analysis.api.*
 import org.jetbrains.kotlin.analysis.api.components.KtDiagnosticCheckerFilter
 import org.jetbrains.kotlin.analysis.api.symbols.KtSymbol
@@ -346,7 +346,7 @@ private class ObjectTableModel(
                     hackyAllowRunningOnEdt {
                         runReadAction {
                             analyseWithCustomToken(obj, AlwaysAccessibleValidityTokenFactory) {
-                                val property = this::class.memberProperties.first { it.name == "firResolveState" } as KProperty1<KtAnalysisSession, LLFirModuleResolveState>
+                                val property = this::class.memberProperties.first { it.name == "firResolveState" } as KProperty1<KtAnalysisSession, LLFirResolveSession>
                                 obj.getOrBuildFir(property.get(this))
                             }
                         }
@@ -358,10 +358,10 @@ private class ObjectTableModel(
                 result += RowData(label("getOrBuildFir"), value?.getTypeAndId(), value, ::getOrBuildFir)
 
                 result += obj::getModuleInfos.toRowData()
-                result += obj::getResolveState.toRowData()
+                result += obj::getFirResolveSession.toRowData()
             }
             is KtModule -> {
-                obj::getResolveState.toRowData()
+                obj::getFirResolveSession.toRowData()
             }
         }
         return result.onEach { it.name.icon = AllIcons.Nodes.Favorite }

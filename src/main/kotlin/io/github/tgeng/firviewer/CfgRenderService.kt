@@ -15,7 +15,7 @@ import org.jetbrains.kotlin.fir.resolve.dfa.cfg.CFGNode
 import org.jetbrains.kotlin.fir.resolve.dfa.cfg.FirControlFlowGraphRenderVisitor
 import org.jetbrains.kotlin.fir.resolve.dfa.cfg.render
 import org.jetbrains.kotlin.analysis.low.level.api.fir.api.getOrBuildFirFile
-import org.jetbrains.kotlin.analysis.low.level.api.fir.api.getResolveState
+import org.jetbrains.kotlin.analysis.low.level.api.fir.api.getFirResolveSession
 import org.jetbrains.kotlin.psi.KtFile
 import java.awt.Color
 import java.io.File
@@ -38,7 +38,7 @@ class CfgRenderService(private val project: Project) {
         val sb = StringBuilder()
         ApplicationManager.getApplication().runReadAction {
             val ktFile = PsiManager.getInstance(project).findFile(vf) as? KtFile ?: return@runReadAction
-            val firFile = ktFile.getOrBuildFirFile(ktFile.getResolveState())
+            val firFile = ktFile.getOrBuildFirFile(ktFile.getFirResolveSession())
             firFile.accept(FirControlFlowGraphRenderVisitor(sb))
         }
         return sb.toString()
